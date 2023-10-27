@@ -1,0 +1,18 @@
+version: '3'
+services:
+  ckan:
+    image: ckan/ckan:latest  # Use the official CKAN image
+    ports:
+      - "5000:5000"  # Expose CKAN on port 5000
+    environment:
+      - CKAN_SITE_URL=http://localhost:5000
+      # Add other CKAN environment variables as needed
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"  # Expose FastAPI on port 8000
+    depends_on:
+      - ckan  # Ensure CKAN is ready before starting FastAPI
