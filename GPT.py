@@ -6,7 +6,7 @@ class GPT:
     def __init__(self, key):
         self.key = key
         self.context = {'Workflow':'', 'Similar':'Generate a similar sentence', 'Synonym':'Tell me the synonym'}
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def ask_gpt(self, context, prompt, model="gpt-3.5-turbo"):
         openai.api_key = self.key
