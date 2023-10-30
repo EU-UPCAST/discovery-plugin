@@ -16,7 +16,7 @@ async def root():
 @app.get("/discover/workflow_search")
 async def workflow_search(q: str = Query("*:*", description="The solr query"), ):
     client = GPT(key)
-    client.ask_gpt("Workflow", q)
+    return(client.ask_gpt("Workflow", q))
 
 
 @app.get("/discover/package_search")
