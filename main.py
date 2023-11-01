@@ -135,7 +135,9 @@ async def mirror(request: Request):
         content = await request.body()
         content_dict = content.decode("utf-8")
         json_data = json.loads(content_dict)
+
         url = f"{CKAN_API_BASE_URL}{json_data['url']}"
+        del json_data['url']
         # Forward request to CKAN instance
         response = requests.post(url, json=json_data)
 
