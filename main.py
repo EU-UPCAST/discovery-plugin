@@ -125,9 +125,9 @@ async def get_current_package_list_with_resources(limit: int = None, offset: int
     return mirror(url,data_dict)
 
 @app.get("/mirror")
-async def mirror(request: Request):
+async def mirror(request: Request, data: MyData):
     try:
-        j = request.json()
+        j = MyData.content
         url = j['url']
         #del j['url']
 
