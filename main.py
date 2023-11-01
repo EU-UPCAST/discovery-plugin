@@ -73,7 +73,6 @@ async def package_search(
     else:
         return {"error": "CKAN API request failed."}
 
-
 @app.get("/discover/resource_search")
 async def resource_search(
         query: str = Query(..., description="The search criteria (e.g., field:term)"),
@@ -91,7 +90,7 @@ async def resource_search(
         "offset": offset,
         "limit": limit,
     }
-
+    return mirror(url,data_dict)
     # Remove None values from data_dict
     data_dict = {key: value for key, value in data_dict.items() if value is not None}
 
@@ -126,7 +125,7 @@ async def get_current_package_list_with_resources(limit: int = None, offset: int
 
     return mirror(url,data_dict)
 
-
+@app.get("/mirror")
 async def mirror(url, data_dict):
 
     # Make a request to the CKAN API
