@@ -126,19 +126,22 @@ async def get_current_package_list_with_resources(limit: int = None, offset: int
 
 @app.get("/mirror")
 async def mirror(request: Request):
-    j = request.json()
-    url = j['url']
-    del j['url']
+    try:
+        j = request.json()
+        url = j['url']
+        #del j['url']
 
-    # Make a request to the CKAN API
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, json=j)
+        # Make a request to the CKAN API
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=j)
 
-    if response.status_code == 200:
-        result = response.json()
-        if result.get('success', False):
-            return result['result']
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('success', False):
+                return result['result']
+            else:
+                return {"error": "CKAN API request was not successful."}
         else:
-            return {"error": "CKAN API request was not successful."}
-    else:
-        return {"error": "CKAN API request failed."}
+            return {"error": "CKAN API request failed."}
+    except BaseException as b:
+        return {"error": b}
