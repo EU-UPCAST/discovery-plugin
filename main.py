@@ -130,6 +130,9 @@ async def get_current_package_list_with_resources(limit: int = None, offset: int
 @app.get("/mirror")
 async def mirror(request: Request):
     try:
+        # Extract and pass headers to the outgoing request
+        incoming_headers = request.headers.items()
+        headers = {key: value for key, value in incoming_headers}
 
         # Extract request data
         content = await request.body()
@@ -139,7 +142,7 @@ async def mirror(request: Request):
         url = f"{CKAN_API_BASE_URL}{json_data['url']}"
         del json_data['url']
         # Forward request to CKAN instance
-        response = requests.post(url, json=json_data)
+        response = requests.post(url, json=json_data, headers=headers)
 
         return response.json()
     except BaseException as b:
