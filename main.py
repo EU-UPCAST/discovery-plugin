@@ -1,6 +1,6 @@
 import json
 
-from fastapi import FastAPI, Query, Request,
+from fastapi import FastAPI, Query, Request
 import httpx
 import requests
 
