@@ -144,4 +144,4 @@ async def mirror(request: Request):
         else:
             return {"error": "CKAN API request failed."}
     except BaseException as b:
-        return {"error": b}
+        return {"error": str(b)}
