@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Query, Request
+import json
+
+from fastapi import FastAPI, Query, Request,
 import httpx
+import requests
 
 from GPT import GPT
 
 key = ""
 app = FastAPI()
-CKAN_API_BASE_URL = 'http://62.171.168.208:8000/'
+CKAN_API_BASE_URL = 'http://62.171.168.208:5000/'
 
 @app.get("/")
 async def root():
@@ -125,23 +128,17 @@ async def get_current_package_list_with_resources(limit: int = None, offset: int
     return mirror(url,data_dict)
 
 @app.get("/mirror")
-async def mirror(request: Request, data: MyData):
+async def mirror(request: Request):
     try:
-        j = MyData.content
-        url = j['url']
-        #del j['url']
 
-        # Make a request to the CKAN API
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=j)
+        # Extract request data
+        content = await request.body()
+        content_dict = content.decode("utf-8")
+        json_data = json.loads(content_dict)
+        url = f"{CKAN_API_BASE_URL}{json_data['url']}"
+        # Forward request to CKAN instance
+        response = requests.post(url, json=json_data)
 
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('success', False):
-                return result['result']
-            else:
-                return {"error": "CKAN API request was not successful."}
-        else:
-            return {"error": "CKAN API request failed."}
+        return response.json()
     except BaseException as b:
         return {"error": str(b)}
