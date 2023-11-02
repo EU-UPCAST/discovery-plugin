@@ -97,7 +97,7 @@ async def resource_search(
     data_dict = {key: value for key, value in data_dict.items() if value is not None}
 
 
-@app.get("/package_list")
+@app.get("/discover/package_list")
 async def get_package_list(limit: int = None, offset: int = None):
     # Construct the CKAN API URL
     url = f"{CKAN_API_BASE_URL}package_list"
@@ -111,7 +111,7 @@ async def get_package_list(limit: int = None, offset: int = None):
 
     return mirror(url,data_dict)
 
-@app.get("/current_package_list_with_resources")
+@app.get("/discover/current_package_list_with_resources")
 async def get_current_package_list_with_resources(limit: int = None, offset: int = None, page: int = None):
     # Construct the CKAN API URL
     url = f"{CKAN_API_BASE_URL}current_package_list_with_resources"
@@ -149,6 +149,56 @@ async def external_mirror(request: Request):
     except BaseException as b:
         return {"error": str(b)}
 
+
+@app.post("catalog/upload_data/")
+async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form(...), package_id: str = Form(...)):
+    url = f"{CKAN_API_BASE_URL}upload_data"
+
+    files = {
+        'upload': (file.filename, file.file)
+    }
+
+    headers = {
+        'Authorization': CKAN_API_KEY
+    }
+
+    data = {
+        'package_id': package_id,
+        'name': resource_name
+    }
+
+    response = requests.post(url, headers=headers, data=data, files=files)
+
+    if response.status_code == 200:
+        return {"detail": "File uploaded successfully"}
+    else:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+
+
+@app.post("catalog/package_create/")
+async def create_ckan_package(name: str = Form(...), title: str = Form(...), notes: str = Form(...)):
+
+    # Construct the CKAN API URL
+    url = f"{CKAN_API_BASE_URL}package_create"
+
+    headers = {
+        'Authorization': CKAN_API_KEY,
+        'Content-Type': 'application/json',
+    }
+
+    data = {
+        'name': name,
+        'title': title,
+        'notes': notes,
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        return {"detail": "CKAN package created successfully"}
+    else:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
 
 async def mirror(url, data_dict):
 
