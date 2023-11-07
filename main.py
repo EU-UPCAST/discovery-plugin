@@ -1,5 +1,5 @@
 import json
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, UploadFile, File, Form
 import httpx
 import requests
 from pydantic import BaseModel
@@ -7,21 +7,18 @@ import config
 from GPT import GPT
 from similarity import Similarity
 
-key = ""
 app = FastAPI()
-
 
 class PackageItem(BaseModel):
     package_id: str
-    ckan_key: str
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 @app.get("/discover/workflow_search")
-async def workflow_search(q: str = Query("*:*", description="The solr query"),key: str =""):
-    client = GPT(key)
+async def workflow_search(q: str = Query("*:*", description="The solr query"),gpt_key: str =""):
+    client = GPT(gpt_key)
     return(client.ask_gpt("Workflow", q))
 
 @app.post("/discover/discover_similar")
@@ -193,14 +190,14 @@ async def external_mirror(request: Request):
 
 @app.post("catalog/upload_data/")
 async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form(...), package_id: str = Form(...)):
-    url = f"{CKAN_API_BASE_URL}upload_data"
+    url = f"{config.ckan_api_url}upload_data"
 
     files = {
         'upload': (file.filename, file.file)
     }
 
     headers = {
-        'Authorization': CKAN_API_KEY
+        'Authorization': config.ckan_api_key
     }
 
     data = {
@@ -221,10 +218,10 @@ async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form
 async def create_ckan_package(name: str = Form(...), title: str = Form(...), notes: str = Form(...)):
 
     # Construct the CKAN API URL
-    url = f"{CKAN_API_BASE_URL}package_create"
+    url = f"{config.ckan_api_url}package_create"
 
     headers = {
-        'Authorization': CKAN_API_KEY,
+        'Authorization': config.ckan_api_key,
         'Content-Type': 'application/json',
     }
 
