@@ -1,25 +1,64 @@
 import json
-
 from fastapi import FastAPI, Query, Request
 import httpx
 import requests
-
+from pydantic import BaseModel
+import config
 from GPT import GPT
+from similarity import Similarity
 
 key = ""
 app = FastAPI()
-CKAN_API_BASE_URL = 'http://62.171.168.208:5000/'
+
+
+class PackageItem(BaseModel):
+    package_id: str
+    ckan_key: str
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
-
 
 @app.get("/discover/workflow_search")
 async def workflow_search(q: str = Query("*:*", description="The solr query"),key: str =""):
     client = GPT(key)
     return(client.ask_gpt("Workflow", q))
 
+@app.post("/discover/discover_similar")
+async def discover_similar(item: PackageItem):
+    sim = Similarity()
+
+    all_packages_metadata = sim.get_all_packages_metadata(item.package_id)
+    embeddings = sim.create_embedding_from_list(all_packages_metadata)
+
+    # Example: Check similarity for a new resource
+    resources = sim.ckan.action.package_show(id=item.package_id)
+
+    new_resource_metadata = resources['notes']
+    similarity_result = sim.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
+
+    return(similarity_result)
+
+@app.get("/discover/translational_search")
+async def translational_search(q: str ,key: str =""):
+    client = GPT(key)
+    text = "detect the language translate it to french, german, turkish, english: "
+
+    trans_text = client.ask_gpt("Translate", text)
+    q = {
+        "q": trans_text,
+        "fl": "title, description, tags, language",
+        "fq": "res_format:json",
+        "rows": 10
+    }
+    #TODO send the query to CKAN, not sure if this works
+
+    # Construct the CKAN API URL
+    url = f"{config.ckan_api_url}resource_search"
+
+    return mirror(url,q)
+
+#region CKAN standard calls
 
 @app.get("/discover/package_search")
 async def package_search(
@@ -40,7 +79,7 @@ async def package_search(
         use_default_schema: bool = Query(False, description="Use default package schema instead of a custom schema"),
 ):
     # Construct the CKAN API URL
-    url = f"{CKAN_API_BASE_URL}package_search"
+    url = f"{config.ckan_api_url}package_search"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {
@@ -75,6 +114,7 @@ async def package_search(
     else:
         return {"error": "CKAN API request failed."}
 
+
 @app.get("/discover/resource_search")
 async def resource_search(
         query: str = Query(..., description="The search criteria (e.g., field:term)"),
@@ -83,7 +123,7 @@ async def resource_search(
         limit: int = Query(None, description="Apply a limit to the query"),
 ):
     # Construct the CKAN API URL
-    url = f"{CKAN_API_BASE_URL}resource_search"
+    url = f"{config.ckan_api_url}resource_search"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {
@@ -94,13 +134,13 @@ async def resource_search(
     }
     return mirror(url,data_dict)
     # Remove None values from data_dict
-    data_dict = {key: value for key, value in data_dict.items() if value is not None}
+    #data_dict = {key: value for key, value in data_dict.items() if value is not None}
 
 
 @app.get("/package_list")
 async def get_package_list(limit: int = None, offset: int = None):
     # Construct the CKAN API URL
-    url = f"{CKAN_API_BASE_URL}package_list"
+    url = f"{config.ckan_api_url}package_list"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {}
@@ -114,7 +154,7 @@ async def get_package_list(limit: int = None, offset: int = None):
 @app.get("/current_package_list_with_resources")
 async def get_current_package_list_with_resources(limit: int = None, offset: int = None, page: int = None):
     # Construct the CKAN API URL
-    url = f"{CKAN_API_BASE_URL}current_package_list_with_resources"
+    url = f"{config.ckan_api_url}current_package_list_with_resources"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {}
@@ -140,7 +180,7 @@ async def external_mirror(request: Request):
         content_dict = content.decode("utf-8")
         json_data = json.loads(content_dict)
 
-        url = f"{CKAN_API_BASE_URL}{json_data['url']}"
+        url = f"{config.ckan_api_url}{json_data['url']}"
         del json_data['url']
         # Forward request to CKAN instance
         response = requests.post(url, json=json_data, headers=headers)
@@ -149,6 +189,7 @@ async def external_mirror(request: Request):
     except BaseException as b:
         return {"error": str(b)}
 
+#endregion
 
 async def mirror(url, data_dict):
 
