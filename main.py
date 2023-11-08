@@ -1,5 +1,5 @@
 import json
-from fastapi import FastAPI, Query, Request, UploadFile, File, Form
+from fastapi import FastAPI, Query, Request, UploadFile, File, Form, HTTPException
 import httpx
 import requests
 from pydantic import BaseModel
@@ -9,17 +9,21 @@ from similarity import Similarity
 
 app = FastAPI()
 
+
 class PackageItem(BaseModel):
     package_id: str
+
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
+
 @app.get("/discover/workflow_search")
-async def workflow_search(q: str = Query("*:*", description="The solr query"),gpt_key: str =""):
+async def workflow_search(q: str = Query("*:*", description="The solr query"), gpt_key: str = ""):
     client = GPT(gpt_key)
-    return(client.ask_gpt("Workflow", q))
+    return (client.ask_gpt("Workflow", q))
+
 
 @app.post("/discover/discover_similar")
 async def discover_similar(item: PackageItem):
@@ -34,10 +38,11 @@ async def discover_similar(item: PackageItem):
     new_resource_metadata = resources['notes']
     similarity_result = sim.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
 
-    return(similarity_result)
+    return (similarity_result)
+
 
 @app.get("/discover/translational_search")
-async def translational_search(q: str ,key: str =""):
+async def translational_search(q: str, key: str = ""):
     client = GPT(key)
     text = "detect the language translate it to french, german, turkish, english: "
 
@@ -48,14 +53,15 @@ async def translational_search(q: str ,key: str =""):
         "fq": "res_format:json",
         "rows": 10
     }
-    #TODO send the query to CKAN, not sure if this works
+    # TODO send the query to CKAN, not sure if this works
 
     # Construct the CKAN API URL
     url = f"{config.ckan_api_url}resource_search"
 
-    return mirror(url,q)
+    return mirror(url, q)
 
-#region CKAN standard calls
+
+# region CKAN standard calls
 
 @app.get("/discover/package_search")
 async def package_search(
@@ -129,9 +135,9 @@ async def resource_search(
         "offset": offset,
         "limit": limit,
     }
-    return mirror(url,data_dict)
+    return mirror(url, data_dict)
     # Remove None values from data_dict
-    #data_dict = {key: value for key, value in data_dict.items() if value is not None}
+    # data_dict = {key: value for key, value in data_dict.items() if value is not None}
 
 
 @app.get("/discover/package_list")
@@ -146,7 +152,8 @@ async def get_package_list(limit: int = None, offset: int = None):
     if offset is not None:
         data_dict['offset'] = offset
 
-    return mirror(url,data_dict)
+    return mirror(url, data_dict)
+
 
 @app.get("/discover/current_package_list_with_resources")
 async def get_current_package_list_with_resources(limit: int = None, offset: int = None, page: int = None):
@@ -162,7 +169,8 @@ async def get_current_package_list_with_resources(limit: int = None, offset: int
     elif offset is not None:
         data_dict['offset'] = offset
 
-    return mirror(url,data_dict)
+    return mirror(url, data_dict)
+
 
 # external generic mirror is not working yet
 @app.get("/mirror")
@@ -186,7 +194,8 @@ async def external_mirror(request: Request):
     except BaseException as b:
         return {"error": str(b)}
 
-#endregion
+
+# endregion
 
 @app.post("catalog/upload_data/")
 async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form(...), package_id: str = Form(...)):
@@ -213,10 +222,8 @@ async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
 
-
 @app.post("catalog/package_create/")
 async def create_ckan_package(name: str = Form(...), title: str = Form(...), notes: str = Form(...)):
-
     # Construct the CKAN API URL
     url = f"{config.ckan_api_url}package_create"
 
@@ -238,8 +245,8 @@ async def create_ckan_package(name: str = Form(...), title: str = Form(...), not
     else:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
-async def mirror(url, data_dict):
 
+async def mirror(url, data_dict):
     # Make a request to the CKAN API
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=data_dict)
