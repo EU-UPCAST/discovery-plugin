@@ -32,7 +32,7 @@ async def root():
 async def discover_similar_datasets(item: DatasetItem):
     sim = Similarity()
 
-    all_packages_metadata = sim.get_all_packages_metadata(item.package_id)
+    all_packages_metadata = sim.get_all_packages_metadata(item.dataset_id)
     embeddings = sim.create_embedding_from_list(all_packages_metadata)
 
     # Example: Check similarity for a new resource
