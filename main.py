@@ -8,7 +8,7 @@ from GPT import GPT
 from similarity import Similarity
 from typing import List
 
-app = FastAPI()
+app = FastAPI(title = 'UPCAST Discovery Plugin API')
 
 
 class DatasetItem(BaseModel):
