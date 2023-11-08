@@ -10,61 +10,64 @@ from similarity import Similarity
 app = FastAPI()
 
 
-class PackageItem(BaseModel):
-    package_id: str
+class DatasetItem(BaseModel):
+    dataset_id: str = Query(None, description="Unique dataset ID")
+
+class ResourceItem(BaseModel):
+    resource_id: str = Query(None, description="Unique resource ID")
 
 
 @app.get("/")
 async def root():
     return {"message": "This is the API service for UPCAST Discovery Plugin"}
 
+#
+# @app.get("/discover/workflow_search")
+# async def workflow_search(q: str = Query("*:*", description="The solr query"), gpt_key: str = ""):
+#     client = GPT(config.gpt_key)
+#     return (client.ask_gpt("Workflow", q))
 
-@app.get("/discover/workflow_search")
-async def workflow_search(q: str = Query("*:*", description="The solr query"), gpt_key: str = ""):
-    client = GPT(gpt_key)
-    return (client.ask_gpt("Workflow", q))
 
-
-@app.post("/discover/discover_similar")
-async def discover_similar(item: PackageItem):
+@app.post("/discover/discover_similar_datasets")
+async def discover_similar_datasets(item: DatasetItem):
     sim = Similarity()
 
     all_packages_metadata = sim.get_all_packages_metadata(item.package_id)
     embeddings = sim.create_embedding_from_list(all_packages_metadata)
 
     # Example: Check similarity for a new resource
-    resources = sim.ckan.action.package_show(id=item.package_id)
+    resources = sim.ckan.action.package_show(id=item.dataset_id)
 
     new_resource_metadata = resources['notes']
     similarity_result = sim.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
 
     return (similarity_result)
 
-
-@app.get("/discover/translational_search")
-async def translational_search(q: str, key: str = ""):
-    client = GPT(key)
-    text = "detect the language translate it to french, german, turkish, english: "
-
-    trans_text = client.ask_gpt("Translate", text)
-    q = {
-        "q": trans_text,
-        "fl": "title, description, tags, language",
-        "fq": "res_format:json",
-        "rows": 10
-    }
-    # TODO send the query to CKAN, not sure if this works
-
-    # Construct the CKAN API URL
-    url = f"{config.ckan_api_url}resource_search"
-
-    return mirror(url, q)
+#
+# @app.get("/discover/translational_search")
+# async def translational_search(q: str, key: str = ""):
+#     client = GPT(key)
+#     text = "detect the language translate it to french, german, turkish, english: "
+#
+#     trans_text = client.ask_gpt("Translate", text)
+#     q = {
+#         "q": trans_text,
+#         "fl": "title, description, tags, language",
+#         "fq": "res_format:json",
+#         "rows": 10
+#     }
+#     # TODO send the query to CKAN, not sure if this works
+#
+#     # Construct the CKAN API URL
+#     url = f"{config.ckan_api_url}resource_search"
+#
+#     return mirror(url, q)
 
 
 # region CKAN standard calls
 
-@app.get("/discover/package_search")
-async def package_search(
+@app.get("/discover/dataset_search")
+async def dataset_search(
         q: str = Query("*:*", description="The solr query"),
         fq: str = Query(None, description="Any filter queries to apply"),
         fq_list: list = Query(None, description="Additional filter queries to apply"),
@@ -79,7 +82,7 @@ async def package_search(
         facet_field: list = Query(None, description="The fields to facet upon"),
         include_drafts: bool = Query(False, description="Include draft datasets"),
         include_private: bool = Query(False, description="Include private datasets"),
-        use_default_schema: bool = Query(False, description="Use default package schema instead of a custom schema"),
+        use_default_schema: bool = Query(False, description="Use default dataset schema instead of a custom schema"),
 ):
     # Construct the CKAN API URL
     url = f"{config.ckan_api_url}package_search"
@@ -140,8 +143,8 @@ async def resource_search(
     # data_dict = {key: value for key, value in data_dict.items() if value is not None}
 
 
-@app.get("/discover/package_list")
-async def get_package_list(limit: int = None, offset: int = None):
+@app.get("/discover/dataset_list")
+async def dataset_list(limit: int = None, offset: int = None):
     # Construct the CKAN API URL
     url = f"{config.ckan_api_url}package_list"
 
@@ -154,51 +157,51 @@ async def get_package_list(limit: int = None, offset: int = None):
 
     return mirror(url, data_dict)
 
+#
+# @app.get("/discover/current_dataset_list_with_resources")
+# async def current_dataset_list_with_resources(limit: int = None, offset: int = None, page: int = None):
+#     # Construct the CKAN API URL
+#     url = f"{config.ckan_api_url}current_package_list_with_resources"
+#
+#     # Construct the data_dict based on the provided parameters
+#     data_dict = {}
+#     if limit is not None:
+#         data_dict['limit'] = limit
+#         if page is not None:
+#             data_dict['offset'] = (page - 1) * limit  # Calculate offset based on page number
+#     elif offset is not None:
+#         data_dict['offset'] = offset
+#
+#     return mirror(url, data_dict)
 
-@app.get("/discover/current_package_list_with_resources")
-async def get_current_package_list_with_resources(limit: int = None, offset: int = None, page: int = None):
-    # Construct the CKAN API URL
-    url = f"{config.ckan_api_url}current_package_list_with_resources"
-
-    # Construct the data_dict based on the provided parameters
-    data_dict = {}
-    if limit is not None:
-        data_dict['limit'] = limit
-        if page is not None:
-            data_dict['offset'] = (page - 1) * limit  # Calculate offset based on page number
-    elif offset is not None:
-        data_dict['offset'] = offset
-
-    return mirror(url, data_dict)
-
-
-# external generic mirror is not working yet
-@app.get("/mirror")
-async def external_mirror(request: Request):
-    try:
-        # Extract and pass headers to the outgoing request
-        incoming_headers = request.headers.items()
-        headers = {key: value for key, value in incoming_headers}
-
-        # Extract request data
-        content = await request.body()
-        content_dict = content.decode("utf-8")
-        json_data = json.loads(content_dict)
-
-        url = f"{config.ckan_api_url}{json_data['url']}"
-        del json_data['url']
-        # Forward request to CKAN instance
-        response = requests.post(url, json=json_data, headers=headers)
-
-        return response.json()
-    except BaseException as b:
-        return {"error": str(b)}
+#
+# # external generic mirror is not working yet
+# @app.get("/mirror")
+# async def external_mirror(request: Request):
+#     try:
+#         # Extract and pass headers to the outgoing request
+#         incoming_headers = request.headers.items()
+#         headers = {key: value for key, value in incoming_headers}
+#
+#         # Extract request data
+#         content = await request.body()
+#         content_dict = content.decode("utf-8")
+#         json_data = json.loads(content_dict)
+#
+#         url = f"{config.ckan_api_url}{json_data['url']}"
+#         del json_data['url']
+#         # Forward request to CKAN instance
+#         response = requests.post(url, json=json_data, headers=headers)
+#
+#         return response.json()
+#     except BaseException as b:
+#         return {"error": str(b)}
 
 
 # endregion
 
 @app.post("catalog/upload_data/")
-async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form(...), package_id: str = Form(...)):
+async def upload_resource(file: UploadFile = File(...), resource_name: str = Form(...), dataset_id: str = Form(...)):
     url = f"{config.ckan_api_url}upload_data"
 
     files = {
@@ -210,7 +213,7 @@ async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form
     }
 
     data = {
-        'package_id': package_id,
+        'package_id': dataset_id,
         'name': resource_name
     }
 
@@ -222,8 +225,8 @@ async def upload_to_ckan(file: UploadFile = File(...), resource_name: str = Form
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
 
-@app.post("catalog/package_create/")
-async def create_ckan_package(name: str = Form(...), title: str = Form(...), notes: str = Form(...)):
+@app.post("catalog/create_dataset/")
+async def create_dataset(name: str = Form(...), title: str = Form(...), notes: str = Form(...)):
     # Construct the CKAN API URL
     url = f"{config.ckan_api_url}package_create"
 
@@ -241,7 +244,7 @@ async def create_ckan_package(name: str = Form(...), title: str = Form(...), not
     response = requests.post(url, headers=headers, json=data)
 
     if response.status_code == 200:
-        return {"detail": "CKAN package created successfully"}
+        return {"detail": "Dataset created successfully"}
     else:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
@@ -256,6 +259,6 @@ async def mirror(url, data_dict):
         if result.get('success', False):
             return result['result']
         else:
-            return {"error": "CKAN API request was not successful."}
+            return {"error": "Backend API request was not successful."}
     else:
-        return {"error": "CKAN API request failed."}
+        return {"error": "Backend API request failed."}
