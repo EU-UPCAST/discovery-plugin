@@ -16,7 +16,7 @@ class PackageItem(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "This is the API service for UPCAST Discovery Plugin"}
 
 
 @app.get("/discover/workflow_search")
