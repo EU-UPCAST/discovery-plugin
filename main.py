@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import config
 from GPT import GPT
 from similarity import Similarity
+from typing import List
 
 app = FastAPI()
 
@@ -28,7 +29,7 @@ async def root():
 #     return (client.ask_gpt("Workflow", q))
 
 
-@app.post("/discover/discover_similar_datasets")
+@app.post("/discover/discover_similar_datasets", response_model=List[dict])
 async def discover_similar_datasets(item: DatasetItem):
     sim = Similarity()
 
@@ -40,8 +41,9 @@ async def discover_similar_datasets(item: DatasetItem):
 
     new_resource_metadata = resources['notes']
     similarity_result = sim.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
-
-    return (similarity_result)
+    # for i in range(len(similarity_result)):
+    #     del similarity_result[i]["text"]
+    return similarity_result
 
 #
 # @app.get("/discover/translational_search")

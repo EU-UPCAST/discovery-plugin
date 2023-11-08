@@ -129,7 +129,7 @@ class Similarity:
                 break
             if similarities[0][i]>threshold:
                 similar_resource = all_packages_metadata[i]
-                similar_resource["score"] = similarities[0][i]
+                similar_resource["score"] = str(similarities[0][i])
                 similar_resources.append(similar_resource)
         if len(similar_resources)>0:
             sorted_data = sorted(similar_resources, key=lambda x: x['score'], reverse=True)
