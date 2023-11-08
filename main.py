@@ -1,8 +1,8 @@
 import json
-from fastapi import FastAPI, Query, Request, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, Query, Request, UploadFile, File, Form, HTTPException, Response
 import httpx
 import requests
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import config
 from GPT import GPT
 from similarity import Similarity
@@ -18,6 +18,12 @@ class ResourceItem(BaseModel):
     resource_id: str = Query(None, description="Unique resource ID")
 
 
+class SimilarItem(BaseModel):
+    id: str = Field(title="id", description="The unique id of the dataset", example="dataset-id")
+    text: str = Field(title="text", description="The unique id of the dataset", example="The description text")
+    score: str = Field(title="score", description="The similarity score", example="0.91")
+
+
 @app.get("/")
 async def root():
     return {"message": "This is the API service for UPCAST Discovery Plugin"}
@@ -29,7 +35,7 @@ async def root():
 #     return (client.ask_gpt("Workflow", q))
 
 
-@app.post("/discover/discover_similar_datasets", response_model=List[dict])
+@app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem])
 async def discover_similar_datasets(item: DatasetItem):
     sim = Similarity()
 
@@ -41,9 +47,11 @@ async def discover_similar_datasets(item: DatasetItem):
 
     new_resource_metadata = resources['notes']
     similarity_result = sim.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
-    # for i in range(len(similarity_result)):
+    res = []
+    for i in range(len(similarity_result)):
+        res.append(SimilarItem(id=similarity_result[i]["id"],text=similarity_result[i]["text"],score=similarity_result[i]["score"]))
     #     del similarity_result[i]["text"]
-    return similarity_result
+    return res
 
 #
 # @app.get("/discover/translational_search")
