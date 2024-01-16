@@ -7,12 +7,12 @@ services:
     ports:
       - "8000:80"  # Expose FastAPI on port 8000
     depends_on:
-      - ckan  # Ensure CKAN is ready before starting FastAPI
+      - backend  # Ensure backend is ready before starting FastAPI
 
-  ckan:
-    container_name: ckan
+  backend:
+    container_name: backend
     build:
-      context: ../ckan/docker-ckan/ckan/
+      context: ../backend/docker-backend/backend/
       dockerfile: Dockerfile
       args:
         - TZ=${TZ}
@@ -24,22 +24,22 @@ services:
       - redis
       - datapusher
     ports:
-      - "0.0.0.0:${CKAN_PORT}:5000"
+      - "0.0.0.0:${Backend_PORT}:5000"
     volumes:
-      - ckan_storage:/var/lib/ckan
+      - backend_storage:/var/lib/backend
 
 
   datapusher:
     container_name: datapusher
     build:
-      context: ../ckan/docker-ckan/datapusher/
+      context: ../backend/docker-backend/datapusher/
     ports:
       - "8800:8800"
 
   db:
     container_name: db
     build:
-      context: ../ckan/docker-ckan/postgresql/
+      context: ../backend/docker-backend/postgresql/
       args:
         - DATASTORE_READONLY_PASSWORD=${DATASTORE_READONLY_PASSWORD}
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -61,6 +61,6 @@ services:
     image: redis:alpine
 
 volumes:
-  ckan_storage:
+  backend_storage:
   pg_data:
   solr_data:

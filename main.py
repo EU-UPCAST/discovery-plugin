@@ -43,7 +43,7 @@ async def discover_similar_datasets(item: DatasetItem):
     embeddings = sim.create_embedding_from_list(all_packages_metadata)
 
     # Example: Check similarity for a new resource
-    resources = sim.ckan.action.package_show(id=item.dataset_id)
+    resources = sim.backend.action.package_show(id=item.dataset_id)
 
     new_resource_metadata = resources['notes']
     similarity_result = sim.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
@@ -66,15 +66,15 @@ async def discover_similar_datasets(item: DatasetItem):
 #         "fq": "res_format:json",
 #         "rows": 10
 #     }
-#     # TODO send the query to CKAN, not sure if this works
+#     # TODO send the query to Backend, not sure if this works
 #
-#     # Construct the CKAN API URL
-#     url = f"{config.ckan_api_url}resource_search"
+#     # Construct the Backend API URL
+#     url = f"{config.backend_api_url}resource_search"
 #
 #     return mirror(url, q)
 
 
-# region CKAN standard calls
+# region Backend standard calls
 
 @app.get("/discover/dataset_search")
 async def dataset_search(
@@ -94,8 +94,8 @@ async def dataset_search(
         include_private: bool = Query(False, description="Include private datasets"),
         use_default_schema: bool = Query(False, description="Use default dataset schema instead of a custom schema"),
 ):
-    # Construct the CKAN API URL
-    url = f"{config.ckan_api_url}package_search"
+    # Construct the Backend API URL
+    url = f"{config.backend_api_url}package_search"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {
@@ -117,7 +117,7 @@ async def dataset_search(
     # Remove None values from data_dict
     data_dict = {key: value for key, value in data_dict.items() if value is not None}
 
-    # Make a request to the CKAN API
+    # Make a request to the Backend API
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=data_dict)
 
@@ -126,9 +126,9 @@ async def dataset_search(
         if result.get('success', False):
             return result['result']
         else:
-            return {"error": "CKAN API request was not successful."}
+            return {"error": "API request was not successful."}
     else:
-        return {"error": "CKAN API request failed."}
+        return {"error": "API request failed."}
 
 
 @app.get("/discover/resource_search")
@@ -138,8 +138,8 @@ async def resource_search(
         offset: int = Query(None, description="Apply an offset to the query"),
         limit: int = Query(None, description="Apply a limit to the query"),
 ):
-    # Construct the CKAN API URL
-    url = f"{config.ckan_api_url}resource_search"
+    # Construct the Backend API URL
+    url = f"{config.backend_api_url}resource_search"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {
@@ -155,8 +155,8 @@ async def resource_search(
 
 @app.get("/discover/dataset_list")
 async def dataset_list(limit: int = None, offset: int = None):
-    # Construct the CKAN API URL
-    url = f"{config.ckan_api_url}package_list"
+    # Construct the Backend API URL
+    url = f"{config.backend_api_url}package_list"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {}
@@ -170,8 +170,8 @@ async def dataset_list(limit: int = None, offset: int = None):
 #
 # @app.get("/discover/current_dataset_list_with_resources")
 # async def current_dataset_list_with_resources(limit: int = None, offset: int = None, page: int = None):
-#     # Construct the CKAN API URL
-#     url = f"{config.ckan_api_url}current_package_list_with_resources"
+#     # Construct the Backend API URL
+#     url = f"{config.backend_api_url}current_package_list_with_resources"
 #
 #     # Construct the data_dict based on the provided parameters
 #     data_dict = {}
@@ -198,9 +198,9 @@ async def dataset_list(limit: int = None, offset: int = None):
 #         content_dict = content.decode("utf-8")
 #         json_data = json.loads(content_dict)
 #
-#         url = f"{config.ckan_api_url}{json_data['url']}"
+#         url = f"{config.backend_api_url}{json_data['url']}"
 #         del json_data['url']
-#         # Forward request to CKAN instance
+#         # Forward request to Backend instance
 #         response = requests.post(url, json=json_data, headers=headers)
 #
 #         return response.json()
@@ -212,14 +212,14 @@ async def dataset_list(limit: int = None, offset: int = None):
 
 @app.post("catalog/upload_data/")
 async def upload_resource(file: UploadFile = File(...), resource_name: str = Form(...), dataset_id: str = Form(...)):
-    url = f"{config.ckan_api_url}upload_data"
+    url = f"{config.backend_api_url}upload_data"
 
     files = {
         'upload': (file.filename, file.file)
     }
 
     headers = {
-        'Authorization': config.ckan_api_key
+        'Authorization': config.backend_api_key
     }
 
     data = {
@@ -237,11 +237,11 @@ async def upload_resource(file: UploadFile = File(...), resource_name: str = For
 
 @app.post("catalog/create_dataset/")
 async def create_dataset(name: str = Form(...), title: str = Form(...), notes: str = Form(...)):
-    # Construct the CKAN API URL
-    url = f"{config.ckan_api_url}package_create"
+    # Construct the Backend API URL
+    url = f"{config.backend_api_url}package_create"
 
     headers = {
-        'Authorization': config.ckan_api_key,
+        'Authorization': config.backend_api_key,
         'Content-Type': 'application/json',
     }
 
@@ -260,7 +260,7 @@ async def create_dataset(name: str = Form(...), title: str = Form(...), notes: s
 
 
 async def mirror(url, data_dict):
-    # Make a request to the CKAN API
+    # Make a request to the Backend API
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=data_dict)
 

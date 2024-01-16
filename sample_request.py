@@ -1,11 +1,11 @@
 import requests
 import config
 
-# CKAN API endpoint for dataset search
-api_url = [config.ckan_api_url] # Replace 'CKAN_URL' with your actual API key
+# backend API endpoint for dataset search
+api_url = [config.backend_api_url] # Replace 'Backend_URL' with your actual API key
 
-# CKAN API key
-api_key = [config.ckan_api_key]  # Replace 'YOUR_API_KEY_HERE' with your actual API key
+# backend API key
+api_key = [config.backend_api_key]  # Replace 'YOUR_API_KEY_HERE' with your actual API key
 
 # Parameters for the search query
 params = {

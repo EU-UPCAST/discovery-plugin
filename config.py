@@ -1,3 +1,4 @@
-ckan_api_key = ''
-ckan_api_url = ''
+backend_api_key = ''
+backend_api_url = ''
 gpt_key = ''
+

@@ -7,33 +7,33 @@ import config
 class Similarity:
 
     def __init__(self):
-        # Initialize CKAN client
-        self.ckan = ckanapi.RemoteCKAN(config.ckan_api_url, apikey=config.ckan_api_key)
+        # Initialize backend client
+        self.backend = ckanapi.RemoteCKAN(config.backend_api_url, apikey=config.backend_api_key)
 
     # Retrieve metadata for all resources
     def get_all_resources_metadata(self):
         # Get a list of packages (datasets)
-        packages = self.ckan.action.package_list()
+        packages = self.backend.action.package_list()
 
         all_resources_metadata = []
 
         for package_id in packages:
             # Get the resources for a package
-            resources = self.ckan.action.package_show(id=package_id)['resources']
+            resources = self.backend.action.package_show(id=package_id)['resources']
             all_resources_metadata.extend([resource['description'] for resource in resources if 'description' in resource])
 
         return all_resources_metadata
 
     def get_all_packages_metadata(self, excluded_id):
         # Get a list of packages (datasets)
-        packages = self.ckan.action.package_list()
+        packages = self.backend.action.package_list()
 
         all_resources_metadata = []
 
         for package_id in packages:
             # Get the resources for a package
             if package_id != excluded_id:
-                resources = self.ckan.action.package_show(id=package_id)
+                resources = self.backend.action.package_show(id=package_id)
                 all_resources_metadata.append({'id': package_id,"text":resources['notes']})
             # all_resources_metadata.extend(resources['tags'])
 
