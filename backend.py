@@ -159,7 +159,7 @@ class Backend:
             return f"File '{file.filename}' uploaded successfully to dataset '{dataset['name']}."
 
         except Exception as e:
-            return "Error"
+            return e
 
 
     def create_backend_package(self,package_name, package_title, organization_name, package_notes):

@@ -10,11 +10,14 @@ from backend import Backend
 app = FastAPI(title = 'UPCAST Discovery Plugin API')
 
 class DatasetItem(BaseModel):
-    dataset_id: str = Query(None, description="Unique dataset ID")
+    package_name: str = Form(...),
+    package_title: str = Form(...),
+    organization_name: str = Form(...),
+    package_notes: str = Form(...),
 
 class ResourceItem(BaseModel):
-    resource_id: str = Query(None, description="Unique resource ID")
-
+    dataset_id: str
+    file: UploadFile = UploadFile(...)
 
 class SimilarItem(BaseModel):
     id: str = Field(title="id", description="The unique id of the dataset", example="dataset-id")
@@ -25,25 +28,7 @@ class SimilarItem(BaseModel):
 async def root():
     return {"message": "This is the API service for UPCAST Discovery Plugin"}
 
-@app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem])
-async def discover_similar_datasets(item: DatasetItem):
-    backend = Backend()
 
-    all_packages_metadata = backend.get_all_packages_metadata(item.dataset_id)
-    embeddings = backend.create_embedding_from_list(all_packages_metadata)
-
-    # Example: Check similarity for a new resource
-    resources = backend.backend.action.package_show(id=item.dataset_id)
-
-    new_resource_metadata = resources['notes']
-    similarity_result = backend.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
-    res = []
-    for i in range(len(similarity_result)):
-        res.append(SimilarItem(id=similarity_result[i]["id"],text=similarity_result[i]["text"],score=similarity_result[i]["score"]))
-    #     del similarity_result[i]["text"]
-    return res
-
-#
 # @app.get("/discover/translational_search")
 # async def translational_search(q: str, key: str = ""):
 #     client = GPT(key)
@@ -122,8 +107,6 @@ async def resource_search(
         limit: int = Query(None, description="Apply a limit to the query"),
 ):
     backend = Backend()
-    # Construct the Backend API URL
-    url = f"{config.backend_api_url}resource_search"
 
     # Construct the data_dict based on the provided parameters
     data_dict = {
@@ -144,46 +127,36 @@ async def dataset_show(
     response = backend.backend.action.package_show(id=dataset_name)
     return response
 
-@app.get("/discover/dataset_list")
-async def dataset_list(limit: int = None, offset: int = None):
-    # Construct the Backend API URL
-    url = f"{config.backend_api_url}package_list"
-
-    # Construct the data_dict based on the provided parameters
-    data_dict = {}
-    if limit is not None:
-        data_dict['limit'] = limit
-    if offset is not None:
-        data_dict['offset'] = offset
-
-    return mirror(url, data_dict)
-
 # endregion
-@app.post("/catalog/upload_data/")
-async def upload_file(dataset_id: str, file: UploadFile = UploadFile(...)):
-    backend = Backend()
-    return backend.upload_file_to_dataset(dataset_id, file)
 
 @app.post("/catalog/create_dataset/")
 async def create_dataset(
-    package_name: str = Form(...),
-    package_title: str = Form(...),
-    organization_name: str = Form(...),
-    package_notes: str = Form(...),
+        package_name: str = Form(...),
+        package_title: str = Form(...),
+        organization_name: str = Form(...),
+        package_notes: str = Form(...),
 ):
     backend = Backend()
     return backend.create_backend_package(package_name, package_title, organization_name, package_notes)
+@app.post("/catalog/upload_data/")
+async def upload_file(dataset_id: str,
+    file: UploadFile = UploadFile(...)):
+    backend = Backend()
+    return backend.upload_file_to_dataset(dataset_id, file)
 
-async def mirror(url, data_dict):
-    # Make a request to the Backend API
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, json=data_dict)
+@app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem])
+async def discover_similar_datasets(item: DatasetItem):
+    backend = Backend()
 
-    if response.status_code == 200:
-        result = response.json()
-        if result.get('success', False):
-            return result['result']
-        else:
-            return {"error": "Backend API request was not successful."}
-    else:
-        return {"error": "Backend API request failed."}
+    all_packages_metadata = backend.get_all_packages_metadata(item.dataset_id)
+    embeddings = backend.create_embedding_from_list(all_packages_metadata)
+
+    # Example: Check similarity for a new resource
+    resources = backend.backend.action.package_show(id=item.dataset_id)
+
+    new_resource_metadata = resources['notes']
+    similarity_result = backend.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
+    res = []
+    for i in range(len(similarity_result)):
+        res.append(SimilarItem(id=similarity_result[i]["id"],text=similarity_result[i]["text"],score=similarity_result[i]["score"]))
+    return res
