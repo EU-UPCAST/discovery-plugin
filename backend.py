@@ -32,7 +32,7 @@ class Backend:
 
         for package_id in packages:
             # Get the resources for a package
-            if package_id != excluded_id:
+            # if package_id != excluded_id:
                 resources = self.backend.action.package_show(id=package_id)
                 all_resources_metadata.append({'id': package_id,"text":resources['notes']})
             # all_resources_metadata.extend(resources['tags'])
@@ -95,7 +95,7 @@ class Backend:
         return embeddings_list
 
     # Function to check similarity for a new resource
-    def check_similarity(self,new_resource_metadata, embeddings, all_packages_metadata, threshold=0.8):
+    def check_similarity(self,new_resource_metadata, embeddings, all_packages_metadata, threshold=0.7):
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         model = BertModel.from_pretrained('bert-base-uncased')
 
@@ -120,12 +120,12 @@ class Backend:
 
         similarities = cosine_similarity(new_embedding, embeddings)
         max_similarity = max(similarities[0])
-
+        threshold = sorted(similarities[0])[-2] - 0.02
         similar_resources = []
         for i in range(0,similarities[0].size):
             if i>=5:
                 break
-            if similarities[0][i]>threshold:
+            if similarities[0][i]>threshold and similarities[0][i]!=1:
                 similar_resource = all_packages_metadata[i]
                 similar_resource["score"] = str(similarities[0][i])
                 similar_resources.append(similar_resource)

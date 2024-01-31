@@ -145,14 +145,14 @@ async def upload_file(dataset_id: str,
     return backend.upload_file_to_dataset(dataset_id, file)
 
 @app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem])
-async def discover_similar_datasets(item: DatasetItem):
+async def discover_similar_datasets(dataset_id: str = Query(None, description="Unique dataset ID")):
     backend = Backend()
 
-    all_packages_metadata = backend.get_all_packages_metadata(item.dataset_id)
+    all_packages_metadata = backend.get_all_packages_metadata(dataset_id)
     embeddings = backend.create_embedding_from_list(all_packages_metadata)
 
     # Example: Check similarity for a new resource
-    resources = backend.backend.action.package_show(id=item.dataset_id)
+    resources = backend.backend.action.package_show(id=dataset_id)
 
     new_resource_metadata = resources['notes']
     similarity_result = backend.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
