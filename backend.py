@@ -4,7 +4,7 @@ from transformers import BertTokenizer, BertModel
 from sklearn.metrics.pairwise import cosine_similarity
 import config
 
-class Similarity:
+class Backend:
 
     def __init__(self):
         # Initialize backend client
@@ -93,9 +93,7 @@ class Similarity:
         embeddings_list = [emb.numpy() for emb in embeddings]
 
         return embeddings_list
-        # Display the embeddings
-        # for emb in embeddings_list:
-        #     print(emb)
+
     # Function to check similarity for a new resource
     def check_similarity(self,new_resource_metadata, embeddings, all_packages_metadata, threshold=0.8):
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -137,6 +135,50 @@ class Similarity:
         else:
             return "No similar resource found."
 
-# Get all resources metadata and create embeddings
-# all_resources_metadata = get_all_resources_metadata()
-# print(similarity_result)
+
+    def upload_file_to_dataset(self,dataset_id, file):
+
+
+        try:
+            # Retrieve the dataset by ID
+            dataset = self.backend.action.package_show(id=dataset_id)
+
+            # Prepare the resource data
+            resource_data = {
+                'package_id': dataset_id,
+                'name': file.filename,  # Use the file name as the resource name
+                'format': file.filename.split('.')[-1],  # Use the file extension as the resource format
+            }
+
+            # Create the resource, which returns the resource ID
+            resource_id = self.backend.action.resource_create(**resource_data)
+
+            # Upload the file to the resource
+            self.backend.action.resource_patch(id=resource_id['id'], upload=(file.filename, file.file))
+
+            return f"File '{file.filename}' uploaded successfully to dataset '{dataset['name']}."
+
+        except Exception as e:
+            return "Error"
+
+
+    def create_backend_package(self,package_name, package_title, organization_name, package_notes):
+
+        try:
+
+            organization = self.backend.action.organization_show(id=organization_name)
+            # Prepare the package data
+            package_data = {
+                'name': package_name,
+                'title': package_title,
+                'notes': package_notes,
+                'owner_org': organization['id'],
+            }
+
+            # Create the package
+            self.backend.action.package_create(**package_data)
+
+            return f"Package '{package_name}' created successfully."
+        except Exception as e:
+            return e
+
