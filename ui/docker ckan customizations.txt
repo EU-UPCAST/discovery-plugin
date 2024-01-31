@@ -1,0 +1,2 @@
+docker cp main.css c1:/srv/app/src/ckan/ckan/public/base/css/main.css
+docker cp ckan-logo.png c1:/srv/app/src/ckan/ckan/public/base/images/ckan-logo.png
