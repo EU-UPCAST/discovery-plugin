@@ -120,12 +120,11 @@ class Backend:
 
         similarities = cosine_similarity(new_embedding, embeddings)
         max_similarity = max(similarities[0])
-        threshold = sorted(similarities[0])[-2] - 0.02
+        threshold = sorted(similarities[0])[-2] - 0.03
         similar_resources = []
+
         for i in range(0,similarities[0].size):
-            if i>=5:
-                break
-            if similarities[0][i]>threshold and similarities[0][i]!=1:
+            if similarities[0][i]>threshold and similarities[0][i]<=0.98:
                 similar_resource = all_packages_metadata[i]
                 similar_resource["score"] = str(similarities[0][i])
                 similar_resources.append(similar_resource)
@@ -161,11 +160,8 @@ class Backend:
         except Exception as e:
             return e
 
-
     def create_backend_package(self,package_name, package_title, organization_name, package_notes):
-
         try:
-
             organization = self.backend.action.organization_show(id=organization_name)
             # Prepare the package data
             package_data = {
@@ -182,3 +178,27 @@ class Backend:
         except Exception as e:
             return e
 
+    def update_backend_package(self,package_id, package_name, package_title, organization_name, package_notes):
+        try:
+            organization = self.backend.action.organization_show(id=organization_name)
+            # Prepare the package data
+            package_data = {
+                'id' : package_id,
+                'name': package_name,
+                'title': package_title,
+                'notes': package_notes,
+                'owner_org': organization['id'],
+            }
+
+            # Create the package
+            self.backend.action.package_update(**package_data)
+
+            return f"Package '{package_name}' created successfully."
+        except Exception as e:
+            return e
+    def delete_package(self,package_id):
+        try:
+            self.backend.action.package_delete(id=package_id)
+            print(f"Package {package_id} deleted successfully.")
+        except Exception as e:
+            print(f"Error deleting package: {e}")

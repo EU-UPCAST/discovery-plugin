@@ -98,7 +98,6 @@ async def dataset_search(
 
     return response
 
-
 @app.get("/discover/resource_search")
 async def resource_search(
         query: str = Query(..., description="The search criteria (e.g., field:term)"),
@@ -138,6 +137,26 @@ async def create_dataset(
 ):
     backend = Backend()
     return backend.create_backend_package(package_name, package_title, organization_name, package_notes)
+
+@app.post("/catalog/update_dataset/")
+async def update_dataset(
+        package_id: str = Form(...),
+        package_name: str = Form(...),
+        package_title: str = Form(...),
+        organization_name: str = Form(...),
+        package_notes: str = Form(...),
+):
+    backend = Backend()
+    return backend.update_backend_package(package_id, package_name, package_title, organization_name, package_notes)
+
+@app.post("/catalog/delete_dataset/")
+async def delete_dataset(
+        package_id: str = Form(...)
+):
+    backend = Backend()
+    resp = backend.delete_package(package_id)
+    return "Package {} deleted successfully.".format(package_id)
+
 @app.post("/catalog/upload_data/")
 async def upload_file(dataset_id: str,
     file: UploadFile = UploadFile(...)):
@@ -157,6 +176,9 @@ async def discover_similar_datasets(dataset_id: str = Query(None, description="U
     new_resource_metadata = resources['notes']
     similarity_result = backend.check_similarity(new_resource_metadata, embeddings, all_packages_metadata)
     res = []
-    for i in range(len(similarity_result)):
-        res.append(SimilarItem(id=similarity_result[i]["id"],text=similarity_result[i]["text"],score=similarity_result[i]["score"]))
-    return res
+    try:
+        for i in range(len(similarity_result)):
+            res.append(SimilarItem(id=similarity_result[i]["id"],text=similarity_result[i]["text"],score=similarity_result[i]["score"]))
+        return res
+    except:
+        return {"result":"no similar resources found"}
