@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover Similar Datasets</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .card h4 {
+            margin-top: 0;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .container button {
+            padding: 5px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .container button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Discover Similar Datasets</h1>
+        <label for="datasetId">Enter Dataset ID:</label>
+        <input type="text" id="datasetId" name="datasetId" placeholder="Enter Dataset ID...">
+        <button onclick="fetchData()">Find</button>
+        <div id="response"></div>
+    </div>
+
+    <script>
+        function fetchData() {
+            const datasetId = document.getElementById('datasetId').value;
+            const endpoint = `http://localhost:8000/discover/discover_similar_datasets?dataset_id=${datasetId}`;
+            const formData = new FormData();
+            formData.append('dataset_id', datasetId);
+
+            fetch(endpoint, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayResponse(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function displayResponse(data) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.innerHTML = '';
+
+            // Find the highest scored item
+            let highestScoreIndex = 0;
+            for (let i = 1; i < data.length; i++) {
+                if (parseFloat(data[i].score) > parseFloat(data[highestScoreIndex].score)) {
+                    highestScoreIndex = i;
+                }
+            }
+
+            // Display original dataset
+            responseDiv.innerHTML += `<h2>Original Dataset:</h2>`;
+            responseDiv.innerHTML += `
+                <div class="card">
+                    <h4>${data[highestScoreIndex].id}</h4>
+                    <p>${data[highestScoreIndex].text}</p>
+                </div>
+            `;
+
+            // Display similar datasets in a grid
+            responseDiv.innerHTML += `<h2>Similar Datasets:</h2>`;
+            responseDiv.innerHTML += `
+                <div class="grid-container">
+            `;
+            for (let i = 0; i < data.length; i++) {
+                if (i !== highestScoreIndex) {
+                    responseDiv.innerHTML += `
+                        <div class="card">
+                            <h4>${data[i].id}</h4>
+                            <p>${data[i].text}</p>
+                        </div>
+                    `;
+                }
+            }
+            responseDiv.innerHTML += `</div>`;
+        }
+    </script>
+</body>
+</html>

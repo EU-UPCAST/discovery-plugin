@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover Similar Datasets</title>
+    <style>
+
+        .container button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .container button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Discover Similar Datasets</h1>
+    <form id="datasetForm">
+        <label for="description">Enter Dataset Description:</label><br>
+        <textarea id="description" name="description" rows="5" cols="50">sample description</textarea><br><br>
+        <input type="submit" value="Submit">
+    </form>
+
+    <div id="results"></div>
+
+    <script>
+        document.getElementById("datasetForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const description = document.getElementById("description").value;
+            fetch("http://localhost:8000/discover/discover_similar_datasets_description", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ description: description })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.result === "no similar resources found") {
+                    document.getElementById("results").innerHTML = "<p>No similar resources found</p>";
+                } else {
+                    let resultsHTML = "<h2>Similar Datasets:</h2>";
+                    data.forEach(dataset => {
+                        resultsHTML += "<div>";
+                        resultsHTML += "<p><strong>ID:</strong> " + dataset.id + "</p>";
+                        resultsHTML += "<p><strong>Text:</strong> " + dataset.text + "</p>";
+                        resultsHTML += "<p><strong>Score:</strong> " + dataset.score + "</p>";
+                        resultsHTML += "</div>";
+                    });
+                    document.getElementById("results").innerHTML = resultsHTML;
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                document.getElementById("results").innerHTML = "<p>An error occurred. Please try again.</p>";
+            });
+        });
+    </script>
+</body>
+</html>

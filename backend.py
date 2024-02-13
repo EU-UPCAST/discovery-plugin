@@ -1,3 +1,6 @@
+import os
+import pickle
+
 import ckanapi
 import torch
 from transformers import BertTokenizer, BertModel
@@ -24,7 +27,7 @@ class Backend:
 
         return all_resources_metadata
 
-    def get_all_packages_metadata(self, excluded_id):
+    def get_all_packages_metadata(self):
         # Get a list of packages (datasets)
         packages = self.backend.action.package_list()
 
@@ -94,8 +97,27 @@ class Backend:
 
         return embeddings_list
 
+    def update_embedding_metadata(self):
+
+        all_packages_metadata = self.get_all_packages_metadata()
+        embeddings = self.create_embedding_from_list(all_packages_metadata)
+        with open('./content/embeddings.pickle', 'wb') as f:
+            pickle.dump(embeddings, f)
+        with open('./content/all_packages_metadata.pickle', 'wb') as f:
+            pickle.dump(all_packages_metadata, f)
+
     # Function to check similarity for a new resource
-    def check_similarity(self,new_resource_metadata, embeddings, all_packages_metadata, threshold=0.7):
+    def check_similarity(self,new_resource_metadata, threshold=0.7):
+
+        all_packages_metadata = ""
+        if os.path.exists("./content/embeddings.pickle"):
+            with open("./content/embeddings.pickle", 'rb') as f:
+                embeddings = pickle.load(f)
+            with open("./content/all_packages_metadata.pickle", 'rb') as f:
+                all_packages_metadata = pickle.load(f)
+        else:
+            self.update_embedding_metadata()
+
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         model = BertModel.from_pretrained('bert-base-uncased')
 
@@ -124,7 +146,7 @@ class Backend:
         similar_resources = []
 
         for i in range(0,similarities[0].size):
-            if similarities[0][i]>threshold and similarities[0][i]<=0.98:
+            if similarities[0][i]>threshold: # and similarities[0][i]<=0.98:
                 similar_resource = all_packages_metadata[i]
                 similar_resource["score"] = str(similarities[0][i])
                 similar_resources.append(similar_resource)
@@ -134,9 +156,7 @@ class Backend:
         else:
             return "No similar resource found."
 
-
     def upload_file_to_dataset(self,dataset_id, file):
-
 
         try:
             # Retrieve the dataset by ID
@@ -175,6 +195,17 @@ class Backend:
             self.backend.action.package_create(**package_data)
 
             return f"Package '{package_name}' created successfully."
+        except Exception as e:
+            return e
+    def create_backend_package_custom(self,organization_name, package_data):
+        try:
+            organization = self.backend.action.organization_show(id=organization_name)
+            package_data["owner_org"] = organization['id']
+
+            # Create the package
+            self.backend.action.package_create(**package_data)
+
+            return "Package {} created successfully.".format(package_data["name"])
         except Exception as e:
             return e
 
