@@ -37,9 +37,9 @@ class SimilarItem(BaseModel):
     text: str = Field(title="text", description="The unique id of the dataset", example="The description text")
     score: str = Field(title="score", description="The similarity score", example="0.91")
 
-@app.get("/")
-async def root():
-    return {"message": "This is the API service for UPCAST Discovery Plugin"}
+# @app.get("/")
+# async def root():
+#     return {"message": "This is the API service for UPCAST Discovery Plugin"}
 @app.get("/ui/discover_ui")
 async def get_search_page():
     # You can also specify media type explicitly

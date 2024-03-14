@@ -11,7 +11,7 @@ from backend import Backend
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-app = FastAPI(title = 'UPCAST Discovery Plugin API')
+app = FastAPI(title = 'UPCAST Publish Plugin API')
 
 # Allow all origins to access your API (you can configure this as needed)
 app.add_middleware(
@@ -37,14 +37,9 @@ class SimilarItem(BaseModel):
     text: str = Field(title="text", description="The unique id of the dataset", example="The description text")
     score: str = Field(title="score", description="The similarity score", example="0.91")
 
-@app.get("/")
-async def root():
-    return {"message": "This is the API service for UPCAST Discovery Plugin"}
-@app.get("/ui/discover_ui")
-async def get_search_page():
-    # You can also specify media type explicitly
-    return FileResponse("ui/search.html", media_type="text/html")
-
+# @app.get("/")
+# async def root():
+#     return {"message": "This is the API service for UPCAST Publish Plugin"}
 
 # @app.get("/discover/translational_search")
 # async def translational_search(q: str, key: str = ""):
