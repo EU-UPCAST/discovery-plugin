@@ -38,14 +38,18 @@ Before you begin, ensure you have the following prerequisites installed:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/EU-UPCAST/discovery-plugin.git
-   
+   git clone --recurse-submodules https://github.com/EU-UPCAST/discovery-plugin.git
+
 2. Navigate to the project directory:
 
     ```bash
     cd discovery-plugin
 
-3. Customize your .env file with necessary configurations. Sample .env:
+3. Make sure docker-ckan submodule is cloned, if not, you may force it again by pulling:
+    ```bash
+    git pull --recurse-submodules
+   
+3. There is an example environment file in the repository (example.env). Customize your .env file with necessary configurations. Sample .env:
 
     ```bash
     TZ=UTC
@@ -63,24 +67,22 @@ This will start the service, backend, datapusher, PostgreSQL, Solr, and Redis co
 
 Visit http://localhost:8000 to explore the Discovery Plugin!
 
-## Configuration
+## Post-install Configuration
 
-Customize the service further by updating the environment variables in the .env file. Modify the configurations as needed for your specific use case.
+Create an integration token in CKAN (/user/[user_name]/api-tokens)
 
-# Example .env file
+Update config.py:
 
- 
-    TZ=UTC
-    Backend_PORT=5000
-    DATASTORE_READONLY_PASSWORD=myreadonlypassword
-    POSTGRES_PASSWORD=mypostgrespassword
+    backend_api_key=[new token]
+    backend_api_url=[ckan_api_url]
+
 
 ## Docker-compose
 
 The Docker Compose configuration is ready to orchestrate the entire service stack. It includes containers for FastAPI, backend, datapusher, PostgreSQL, Solr, and Redis.
 
 
-    docker-compose up -d
+    docker-compose restart
 
 ## Contributing
 
