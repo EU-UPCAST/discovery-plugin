@@ -64,8 +64,12 @@ This will start the service, backend, datapusher, PostgreSQL, Solr, and Redis co
 Visit http://localhost:8000 to explore the Discovery Plugin!
 
 ## Configuration
+Create an integration token in CKAN (/user/[user_name]/api-tokens)
+Update config.py:
+backend_api_key=[new token]
+backend_api_url=[ckan_api_url]
 
-Customize the service further by updating the environment variables in the .env file. Modify the configurations as needed for your specific use case.
+Customize the CKAN related services further by updating the environment variables in the .env file. Modify the configurations as needed for your specific use case.
 
 # Example .env file
 
@@ -77,8 +81,7 @@ Customize the service further by updating the environment variables in the .env 
 
 ## Docker-compose
 
-The Docker Compose configuration is ready to orchestrate the entire service stack. It includes containers for FastAPI, backend, datapusher, PostgreSQL, Solr, and Redis.
-
+The Docker Compose configuration is ready to orchestrate the entire service stack. It includes containers for Publish and Discovery APIs, ckan backend, datapusher, PostgreSQL, Solr, and Redis.
 
     docker-compose up -d
 
