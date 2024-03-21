@@ -1,4 +1,4 @@
-# Discovery Plugin
+# Discovery & Publish Plugin
 
 Welcome to the Discovery Plugin
 
