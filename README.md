@@ -68,9 +68,6 @@ This will start the service, backend, datapusher, PostgreSQL, Solr, and Redis co
 ## Post-install Configuration
 Visit CKAN instance at http://localhost:5001
 
-Create an integration token in CKAN (/user/[user_name]/api-tokens)
-=======
-## Configuration
 Create an integration token in CKAN (/user/[user_name]/api-tokens), and 
 
 Update the config.py with the new token and ckan url:
