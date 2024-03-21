@@ -8,6 +8,8 @@ services:
       - "8000:80"  # Expose Discovery Plugin API on port 8000
     depends_on:
       - ckan  # Ensure ckan is ready before starting API
+    volumes:
+      - .:/app 
   publishapi:
     build:
       context: .
@@ -16,6 +18,8 @@ services:
       - "8001:80"  # Expose Publish Plugin API on port 8000
     depends_on:
       - ckan  # Ensure ckan is ready before starting API
+    volumes:
+      - .:/app 
 
   datapusher:
     container_name: datapusher
