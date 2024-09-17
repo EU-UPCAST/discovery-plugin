@@ -1,8 +1,8 @@
-# Discovery Plugin
+# Discovery & Publish Plugin
 
 Welcome to the Discovery Plugin
 
-This service is powered by FastAPI and relies on a robust backend, datapusher, PostgreSQL database, Solr search, Redis caching, and more.
+This service is powered by FastAPI and relies on a robust CKAN backend, datapusher, PostgreSQL database, Solr search, Redis caching, and more.
 
 ## Table of Contents
 
@@ -60,16 +60,25 @@ Before you begin, ensure you have the following prerequisites installed:
 ## Usage
 To run the Discovery Plugin service, execute the following command:
 
-
     docker-compose up -d
 
 This will start the service, backend, datapusher, PostgreSQL, Solr, and Redis containers.
 
-Visit http://localhost:8000 to explore the Discovery Plugin!
 
 ## Post-install Configuration
+Visit CKAN instance at http://localhost:5001
 
 Create an integration token in CKAN (/user/[user_name]/api-tokens)
+=======
+## Configuration
+Create an integration token in CKAN (/user/[user_name]/api-tokens), and 
+
+Update the config.py with the new token and ckan url:
+backend_api_key=[new token]
+backend_api_url=[ckan_api_url]
+
+Customize the CKAN related services further by updating the environment variables in the .env file. Modify the configurations as needed for your specific use case.
+
 
 Update config.py:
 
@@ -79,10 +88,11 @@ Update config.py:
 
 ## Docker-compose
 
-The Docker Compose configuration is ready to orchestrate the entire service stack. It includes containers for FastAPI, backend, datapusher, PostgreSQL, Solr, and Redis.
-
+The Docker Compose configuration is ready to orchestrate the entire service stack. It includes containers for Publish and Discovery APIs, ckan backend, datapusher, PostgreSQL, Solr, and Redis.
 
     docker-compose restart
+    
+    Visit http://localhost:8000/redoc to explore the Discovery Plugin and http://localhost:8001/redoc to explore the Publish Plugin!
 
 ## Contributing
 
