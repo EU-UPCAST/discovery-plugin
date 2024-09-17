@@ -40,10 +40,15 @@ class SimilarItem(BaseModel):
 # @app.get("/")
 # async def root():
 #     return {"message": "This is the API service for UPCAST Discovery Plugin"}
-@app.get("/ui/discover_ui")
+@app.get("/ui/search_ui")
 async def get_search_page():
     # You can also specify media type explicitly
     return FileResponse("ui/search.html", media_type="text/html")
+
+@app.get("/ui/discover_ui")
+async def get_search_page():
+    # You can also specify media type explicitly
+    return FileResponse("ui/discover_dataset.html", media_type="text/html")
 
 
 # @app.get("/discover/translational_search")
