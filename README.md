@@ -60,7 +60,7 @@ Before you begin, ensure you have the following prerequisites installed:
 ## Usage
 To run the Discovery Plugin service, execute the following command:
 
-    docker-compose up -d
+    docker compose up -d
 
 This will start the service, backend, datapusher, PostgreSQL, Solr, and Redis containers.
 
@@ -68,9 +68,6 @@ This will start the service, backend, datapusher, PostgreSQL, Solr, and Redis co
 ## Post-install Configuration
 Visit CKAN instance at http://localhost:5001
 
-Create an integration token in CKAN (/user/[user_name]/api-tokens)
-=======
-## Configuration
 Create an integration token in CKAN (/user/[user_name]/api-tokens), and 
 
 Update the config.py with the new token and ckan url:
@@ -86,11 +83,11 @@ Update config.py:
     backend_api_url=[ckan_api_url]
 
 
-## Docker-compose
+## Docker compose
 
 The Docker Compose configuration is ready to orchestrate the entire service stack. It includes containers for Publish and Discovery APIs, ckan backend, datapusher, PostgreSQL, Solr, and Redis.
 
-    docker-compose restart
+    docker compose restart
     
     Visit http://localhost:8000/redoc to explore the Discovery Plugin and http://localhost:8001/redoc to explore the Publish Plugin!
 
