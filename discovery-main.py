@@ -7,7 +7,7 @@ from fastapi import FastAPI, Query, UploadFile, Form, HTTPException
 from pydantic import BaseModel, Field
 
 import config
-from backend import Backend
+from backend import Backend, Backend_Faiss, DatasetSimilarities
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -150,10 +150,9 @@ async def dataset_show(
 
 # endregion
 
-
 @app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem])
 async def discover_similar_datasets(dataset_id: str = Query(None, description="Unique dataset ID")):
-    backend = Backend()
+    backend = Backend_Faiss()
 
     # Example: Check similarity for a new resource
     resources = backend.backend.action.package_show(id=dataset_id)
@@ -168,17 +167,33 @@ async def discover_similar_datasets(dataset_id: str = Query(None, description="U
     except:
         return {"result":"no similar resources found"}
 
+
+
+@app.post("/discover/discover_data_processing_workflow", response_model=List[DatasetSimilarities])
+async def discover_dpw(dataset_ids: List[str]):
+    # Use the find_similar_datasets function with the provided list of dataset_ids
+    try:
+        faiss_backend = Backend_Faiss()
+        result = faiss_backend.find_similar_datasets(dataset_ids)
+
+        if result:
+            return result
+        else:
+            return {"result": "No similar datasets found"}
+
+    except Exception as e:
+        return {"error": "An error occurred while processing", "details": str(e)}
 @app.get("/discover/create_embeddings")
 async def create_embeddings():
-    backend = Backend()
+    backend = Backend_Faiss()
     backend.update_embedding_metadata()
     return {"result":"embedding updated"}
 
 @app.post("/discover/discover_similar_datasets_description", response_model=List[SimilarItem])
 async def discover_similar_datasets_description(description: str = Query("sample description", description="Dataset description")):
-    backend = Backend()
+    backend = Backend_Faiss()
 
-    similarity_result = backend.check_similarity(description)
+    similarity_result = backend.check_similarity_all(description)
     res = []
     try:
         for i in range(len(similarity_result)):
@@ -186,3 +201,7 @@ async def discover_similar_datasets_description(description: str = Query("sample
         return res
     except:
         return {"result":"no similar resources found"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("discovery-main:app", host="127.0.0.1", port=8000, reload=True)
