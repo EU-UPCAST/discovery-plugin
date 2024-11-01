@@ -1,8 +1,9 @@
 import os
 import pickle
-from typing import List
+from typing import List, Dict, Any
 
 import httpx
+import uvicorn
 from fastapi import FastAPI, Query, UploadFile, Form, HTTPException
 from pydantic import BaseModel, Field
 
@@ -60,8 +61,16 @@ class SimilarItem(BaseModel):
 #
 #     return mirror(url, q)
 
-
 # region Backend standard calls
+
+
+@app.post("/catalog/create_dataset_with_custom_fields/")
+async def create_dataset_with_policy(body: Dict[str, Any]):
+    backend = Backend()
+    try:
+        return backend.create_backend_package_custom(body)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/catalog/create_dataset/")
 async def create_dataset(
@@ -110,3 +119,6 @@ async def upload_file(dataset_id: str,
     file: UploadFile = UploadFile(...)):
     backend = Backend()
     return backend.upload_file_to_dataset(dataset_id, file)
+
+if __name__ == "__main__":
+    uvicorn.run("publish-main:app", host="0.0.0.0", port=8000, reload=True)

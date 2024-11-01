@@ -1,3 +1,4 @@
+import json
 import os
 import pickle
 from typing import List
@@ -202,15 +203,18 @@ class Backend:
             return f"Package '{package_name}' created successfully."
         except Exception as e:
             return e
-    def create_backend_package_custom(self,organization_name, package_data):
+
+    def create_backend_package_custom(self, package_data):
         try:
-            organization = self.backend.action.organization_show(id=organization_name)
+            organization = self.backend.action.organization_show(id=package_data["organization_name"])
             package_data["owner_org"] = organization['id']
-
+            for item in package_data["extras"]:
+                if not isinstance(item["value"], str):
+                    item["value"] = str(item["value"])
             # Create the package
-            self.backend.action.package_create(**package_data)
+            response = self.backend.action.package_create(**package_data)
 
-            return "Package {} created successfully.".format(package_data["name"])
+            return "Package {} created successfully with id {}.".format(package_data["name"], response['id'])
         except Exception as e:
             return e
 
