@@ -114,3 +114,8 @@ async def upload_file(dataset_id: str,
     file: UploadFile = UploadFile(...)):
     backend = Backend()
     return backend.upload_file_to_dataset(dataset_id, file)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main-publish-secure:app", host="127.0.0.1", port=8001, reload=True)
