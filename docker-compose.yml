@@ -24,7 +24,8 @@ services:
   datapusher:
     container_name: datapusher
     build:
-      context: ./docker-ckan/datapusher/
+      context: ./custom-docker/
+      dockerfile: datapusher.Dockerfile
     ports:
       - "8800:8800"
 
