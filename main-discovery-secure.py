@@ -1,7 +1,7 @@
 import os
 import pickle
 from typing import List
-
+import uvicorn
 import httpx
 from fastapi import FastAPI, Query, UploadFile, Form, HTTPException, Header, Depends
 from pydantic import BaseModel, Field
@@ -209,5 +209,4 @@ async def discover_similar_datasets_description(description: str = Query("sample
         return {"result":"no similar resources found"}
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("main-discovery-secure:app", host="127.0.0.1", port=8001, reload=True)
