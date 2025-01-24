@@ -11,7 +11,8 @@ from backend import Backend, Backend_Faiss, DatasetSimilarities
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-app = FastAPI(title = 'UPCAST Discovery Plugin API')
+app = FastAPI(title = 'UPCAST Discovery Plugin API v2', description="UPCAST Discovery Plugin API Endpoints to Discover Datasets from a preexisting repository",
+              root_path="/discovery-api")
 
 # Allow all origins to access your API (you can configure this as needed)
 app.add_middleware(
@@ -23,8 +24,8 @@ app.add_middleware(
 )
 
 # Dependency for API token verification
-def verify_api_token(api_token: str = Header(None)):
-    if api_token != config.backend_api_key:
+def verify_api_token(apitoken: str = Header(None)):
+    if apitoken != config.backend_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid API token")
 
 class DatasetItem(BaseModel):
@@ -155,6 +156,12 @@ async def dataset_show(
 
 # endregion
 
+@app.get("/discover/create_embeddings", dependencies=[Depends(verify_api_token)])
+async def create_embeddings():
+    backend = Backend_Faiss()
+    backend.update_embedding_metadata()
+    return {"result":"embedding updated"}
+
 @app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem], dependencies=[Depends(verify_api_token)])
 async def discover_similar_datasets(dataset_id: str = Query(None, description="Unique dataset ID")):
     backend = Backend_Faiss()
@@ -173,7 +180,6 @@ async def discover_similar_datasets(dataset_id: str = Query(None, description="U
         return {"result":"no similar resources found"}
 
 
-
 @app.post("/discover/discover_data_processing_workflow", response_model=List[DatasetSimilarities], dependencies=[Depends(verify_api_token)])
 async def discover_dpw(dataset_ids: List[str]):
     # Use the find_similar_datasets function with the provided list of dataset_ids
@@ -188,11 +194,6 @@ async def discover_dpw(dataset_ids: List[str]):
 
     except Exception as e:
         return {"error": "An error occurred while processing", "details": str(e)}
-@app.get("/discover/create_embeddings", dependencies=[Depends(verify_api_token)])
-async def create_embeddings():
-    backend = Backend_Faiss()
-    backend.update_embedding_metadata()
-    return {"result":"embedding updated"}
 
 @app.post("/discover/discover_similar_datasets_description", response_model=List[SimilarItem], dependencies=[Depends(verify_api_token)])
 async def discover_similar_datasets_description(description: str = Query("sample description", description="Dataset description")):
@@ -209,4 +210,4 @@ async def discover_similar_datasets_description(description: str = Query("sample
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("discovery-main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main-discovery-secure:app", host="127.0.0.1", port=8001, reload=True)
