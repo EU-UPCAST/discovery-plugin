@@ -1,3 +1,4 @@
+import json
 import os
 import pickle
 from typing import List, Dict, Any
@@ -5,12 +6,14 @@ from typing import List, Dict, Any
 import httpx
 import uvicorn
 from fastapi import FastAPI, Query, UploadFile, Form, HTTPException, Header, Depends
+import requests
 from pydantic import BaseModel, Field
 
 import config
 from backend import Backend
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from rdflib import Graph
 
 app = FastAPI(title = 'UPCAST Publish Plugin API v2', description="UPCAST Discovery Plugin API Endpoints to Publish Datasets to UPCAST Discovery Plugin repository",
               root_path="/publish-api")
@@ -55,134 +58,111 @@ async def create_dataset(
     backend = Backend()
     return backend.create_backend_package(package_name, package_title, organization_name, package_notes)
 
-def publish_nokia(body):
-    import requests
+def publish_nokia(upcast_object):
+    upcast_object_graph = Graph().parse(data=upcast_object.replace("'", '"'), format="json-ld")
+    upcast_object_json = json.loads(upcast_object.replace("'", '"'))
+    try:
+        # Step 1: Get the authentication token
+        auth_url = config.integration_nokia['url']
+        auth_payload = config.integration_nokia['auth']
+        auth_headers = {"Content-Type": "application/json"}
 
-    # Step 1: Get the authentication token
-    auth_url = config.integration_nokia['url']
-    auth_payload = config.integration_nokia['auth']
-    auth_headers = {"Content-Type": "application/json"}
+        auth_response = requests.post(
+            auth_url,
+            json=auth_payload,
+            headers=auth_headers,
+            verify=False
+        )
+        if str(auth_response.status_code)[0] == "2":
+            auth_data = auth_response.json()
+            token = auth_data.get("token")  # Update key name if different
+            print("Authentication successful. Token:", token)
+        else:
+            print("Failed to authenticate:", auth_response.text)
+            exit()
 
-    auth_response = requests.post(auth_url, json=auth_payload, headers=auth_headers)
-
-    if auth_response.status_code == 200:
-        auth_data = auth_response.json()
-        token = auth_data.get("token")  # Update key name if different
-        print("Authentication successful. Token:", token)
-    else:
-        print("Failed to authenticate:", auth_response.text)
-        exit()
-
-    # Step 2: Use the token to send data to the streams endpoint
-    streams_url = "https://upcast.dataexchange.nokia.com//streams/streams"
-    streams_payload = {
-        "url": "http://68k.news/",
-        "visibility": "public",
-        "name": "upcastmetatest_semih",
-        "type": "metatest",
-        "description": "tetsing meta data 3",
-        "snippet": "{}",
-        "price": 1000000,
-        "location": {
-            "type": "Point",
-            "coordinates": [20, 44]
-        },
-        "terms": "https://gdpr-info.eu/",
-        "external": False,
-        "subcategory": "66605a587b0d2a883f28cdfc",
-        "metadata": {
-            "tags": [
-                {
-                    "@context": {
-                        "upcast": "https://www.upcast-project.eu/upcast-vocab/1.0/",
-                        "dcat": "http://www.w3.org/ns/dcat#",
-                        "foaf": "http://xmlns.com/foaf/0.1/",
-                        "idsa-core": "https://w3id.org/idsa/core/",
-                        "dct": "http://purl.org/dc/terms/",
-                        "odrl": "http://www.w3.org/ns/odrl/"
-                    },
-                    "@graph": [
-                        {
-                            "@id": "http://upcast-project.eu/distribution/example-distribution-dataset-1",
-                            "@type": "dcat:Distribution",
-                            "dct:description": "Example Distribution of a Dataset",
-                            "dct:format": "csv",
-                            "dct:title": "CSV Distribution of Dataset 1",
-                            "dcat:byteSize": 346,
-                            "dcat:mediaType": "text/csv"
-                        },
-                        {
-                            "@id": "http://upcast-project.eu/dataset/example-dataset-1",
-                            "@type": "dcat:Dataset",
-                            "dct:title": "Example Dataset",
-                            "dct:description": "Example of a Dataset showing a minimal set of properties for Usage Constraints",
-                            "dct:publisher": {
-                                "@id": "https://upcast-project.eu/producer/example-data-provider"
-                            },
-                            "idsa-core:Provider": {
-                                "@id": "https://upcast-project.eu/producer/example-data-provider"
-                            },
-                            "dcat:distribution": {
-                                "@id": "http://upcast-project.eu/dataset/example-dataset-1"
-                            },
-                            "odrl:hasPolicy": {
-                                "@id": "http://upcast-project.eu/policy/usage-constraint-example"
-                            }
-                        },
-                        {
-                            "@id": "https://upcast-project.eu/provider/example-data-provider",
-                            "@type": [
-                                "foaf:Agent",
-                                "foaf:Organization"
-                            ],
-                            "foaf:name": "Data Provider Organization"
-                        },
-                        {
-                            "@id": "http://upcast-project.eu/policy/usage-constraint-example",
-                            "@type": "odrl:Offer",
-                            "odrl:permission": {
-                                "odrl:action": {
-                                    "@id": "odrl:aggregate"
-                                },
-                                "odrl:assigner": {
-                                    "@id": "https://upcast-project.eu/provider/example-data-provider"
-                                },
-                                "odrl:target": {
-                                    "@id": "http://upcast-project.eu/dataset/example-dataset-1"
-                                }
-                            },
-                            "odrl:prohibition": {
-                                "odrl:action": {
-                                    "@id": "odrl:use"
-                                },
-                                "odrl:assigner": {
-                                    "@id": "https://upcast-project.eu/provider/example-data-provider"
-                                },
-                                "odrl:assignee": {
-                                    "@id": "http://data-space-vocabulary/classes/AI-Agent"
-                                },
-                                "odrl:target": {
-                                    "@id": "http://upcast-project.eu/dataset/example-dataset-1"
-                                }
-                            }
-                        }
-                    ]
-                }
-            ]
+        # Step 2: Use the token to send data to the streams endpoint
+        streams_url = "https://upcast.dataexchange.nokia.com//streams/streams"
+        streams_payload = {
+            "url": "http://68k.news/",
+            "visibility": "public",
+            "name": "upcastmetatest_semih",
+            "type": "metatest",
+            "description": "tetsing meta data 3",
+            "snippet": "{}",
+            "price": 0,
+            "location": {
+                "type": "Point",
+                "coordinates": [20, 44]
+            },
+            "terms": "https://gdpr-info.eu/",
+            "external": False,
+            "subcategory": "66605a587b0d2a883f28cdfc",
+            "metadata": {
+                "tags": [
+                    upcast_object_json
+                ]
+            }
         }
-    }
-    streams_headers = {
-        "Authorization": token,
-        "Content-Type": "application/json"
-    }
+        query = """
+        PREFIX dcat: <http://www.w3.org/ns/dcat#>
 
-    streams_response = requests.post(streams_url, json=streams_payload, headers=streams_headers)
+        SELECT ?id ?p ?o ?type
+        WHERE {
+          ?s a ?type ;
+             ?p ?o .
+          BIND(STR(?s) AS ?id)
+        }
+        """
 
-    if streams_response.status_code == 200:
-        print("Stream data posted successfully:", streams_response.json())
-    else:
-        print("Failed to post stream data:", streams_response.text)
+        # Execute the query and assign the result
+        results = upcast_object_graph.query(query)
+#         = [(str(row.id),str(row.desc),str(row.type)) for row in results]
+        url = ""
+        desc = ""
+        price = 0
+        title = ""
+        for row in results:
+            pass
+        for row in results:
+            if "distribution" in str(row.type).lower():
+                url = row.id
+                if "description" in str(row.p).lower():
+                    desc = row.o
+                if "price" in str(row.p).lower():
+                    price = row.o
+                if "title" in str(row.p).lower():
+                    title = row.o
+            elif "dataset" in  str(row.type).lower():
+                if url == "":
+                    url = row.id
+                if "description" in str(row.p).lower() and desc == "":
+                    desc = row.o
+                if "price" in str(row.p).lower() and price == 0:
+                    price = row.o
+                if "title" in str(row.p).lower() and title == 0:
+                    title = row.o
 
+        streams_payload["url"] = str(url)
+        streams_payload["price"] = price.value
+        streams_payload["name"] = str(title)
+        streams_payload["description"] = str(desc)
+
+
+        streams_headers = {
+            "Content-Type": "application/json",
+            "Authorization": token
+        }
+
+        streams_response = requests.post(streams_url, json=streams_payload, headers=streams_headers,
+            verify=False)
+
+        if str(auth_response.status_code)[0] == "2":
+            print("Stream data posted successfully:", streams_response.json())
+        else:
+            print("Failed to post stream data:", streams_response.text)
+    except BaseException as b:
+        print(b)
 @app.post("/catalog/create_dataset_with_custom_fields/", dependencies=[Depends(verify_api_token)])
 async def create_dataset_with_custom_fields(body: Dict[str, Any]):
     backend = Backend()
@@ -192,12 +172,17 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
         for ex in body['extras']:
             if ex['key']=='marketplace':
                 marketplace = ex['value']
+            if ex['key']=='upcast':
+                upcast_object = ex['value']
+                try:
+                    upcast_object_graph = Graph().parse(data=upcast_object.replace("'",'"'), format="json-ld")
+                except:
+                    raise HTTPException(status_code=400, detail="UPCAST object could not be parsed")
         try:
             if marketplace == 'nokia':
-                publish_nokia(body)
-        except:
+                publish_nokia(upcast_object)
+        except BaseException as b:
             pass
-
         return backend.create_backend_package_custom(body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
