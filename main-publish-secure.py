@@ -59,8 +59,8 @@ async def create_dataset(
     return backend.create_backend_package(package_name, package_title, organization_name, package_notes)
 
 def publish_nokia(upcast_object):
-    upcast_object_graph = Graph().parse(data=upcast_object.replace("'", '"'), format="json-ld")
-    upcast_object_json = json.loads(upcast_object.replace("'", '"'))
+    upcast_object_graph = Graph().parse(data=upcast_object, format="json-ld")
+    upcast_object_json = upcast_object
     try:
         # Step 1: Get the authentication token
         auth_url = config.integration_nokia['url']
@@ -84,11 +84,11 @@ def publish_nokia(upcast_object):
         # Step 2: Use the token to send data to the streams endpoint
         streams_url = "https://upcast.dataexchange.nokia.com//streams/streams"
         streams_payload = {
-            "url": "http://68k.news/",
+            "url": "http://example.org/",
             "visibility": "public",
-            "name": "upcastmetatest_semih",
+            "name": "UPCAST metatest",
             "type": "metatest",
-            "description": "tetsing meta data 3",
+            "description": "testing meta data 3",
             "snippet": "{}",
             "price": 0,
             "location": {
@@ -175,7 +175,7 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
             if ex['key']=='upcast':
                 upcast_object = ex['value']
                 try:
-                    upcast_object_graph = Graph().parse(data=upcast_object.replace("'",'"'), format="json-ld")
+                    upcast_object_graph = Graph().parse(data=upcast_object, format="json-ld")
                 except:
                     raise HTTPException(status_code=400, detail="UPCAST object could not be parsed")
         try:
@@ -185,7 +185,7 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
             pass
         return backend.create_backend_package_custom(body)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e.detail))
 
 
 
