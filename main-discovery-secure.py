@@ -25,7 +25,7 @@ app.add_middleware(
 
 # Dependency for API token verification
 def verify_api_token(apitoken: str = Header(None)):
-    if apitoken != config.backend_api_key:
+    if apitoken != config.service_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid API token")
 
 class DatasetItem(BaseModel):

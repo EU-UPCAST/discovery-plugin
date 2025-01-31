@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 def verify_api_token(apitoken: str = Header(None)):
-    if apitoken != config.backend_api_key:
+    if apitoken != config.service_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid API token")
 
 class DatasetItem(BaseModel):
@@ -179,7 +179,7 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
                 except:
                     raise HTTPException(status_code=400, detail="UPCAST object could not be parsed")
         try:
-            if marketplace == 'nokia':
+            if marketplace == 'nokia' and 'created successfully' in package_response:
                 publish_nokia(upcast_object)
         except BaseException as b:
             pass
