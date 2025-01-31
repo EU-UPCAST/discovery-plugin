@@ -59,7 +59,7 @@ async def create_dataset(
     return backend.create_backend_package(package_name, package_title, organization_name, package_notes)
 
 def publish_nokia(upcast_object):
-    upcast_object_graph = Graph().parse(data=upcast_object, format="json-ld")
+    upcast_object_graph = Graph().parse(data=upcast_object.replace("'",'"'), format="json-ld")
     upcast_object_json = upcast_object
     try:
         # Step 1: Get the authentication token
@@ -175,7 +175,7 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
             if ex['key']=='upcast':
                 upcast_object = ex['value']
                 try:
-                    upcast_object_graph = Graph().parse(data=upcast_object, format="json-ld")
+                    upcast_object_graph = Graph().parse(data=upcast_object.replace("'",'"'), format="json-ld")
                 except:
                     raise HTTPException(status_code=400, detail="UPCAST object could not be parsed")
         try:
@@ -183,10 +183,9 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
                 publish_nokia(upcast_object)
         except BaseException as b:
             pass
-        return backend.create_backend_package_custom(body)
+        return package_response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e.detail))
-
 
 
 @app.post("/catalog/update_dataset/", dependencies=[Depends(verify_api_token)])
