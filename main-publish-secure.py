@@ -14,6 +14,9 @@ from backend import Backend
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from rdflib import Graph
+from confluent_kafka import Producer, KafkaException
+from datetime import datetime, timedelta, timezone
+
 
 app = FastAPI(title = 'UPCAST Publish Plugin API v2', description="UPCAST Discovery Plugin API Endpoints to Publish Datasets to UPCAST Discovery Plugin repository",
               root_path="/publish-api")
@@ -179,8 +182,11 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
                 except:
                     raise HTTPException(status_code=400, detail="UPCAST object could not be parsed")
         try:
-            if marketplace == 'nokia' and 'created successfully' in package_response:
-                publish_nokia(upcast_object)
+            if 'created successfully' in package_response:
+                if marketplace == 'nokia' and 'created successfully' in package_response:
+                    publish_nokia(upcast_object)
+
+                await push_kafka_message("publishing-plugin", "publish", marketplace, body)
         except BaseException as b:
             pass
         return package_response
@@ -213,7 +219,47 @@ async def upload_file(dataset_id: str,
     backend = Backend()
     return backend.upload_file_to_dataset(dataset_id, file)
 
+# Define Kafka broker configuration
+kafka_conf = {'bootstrap.servers': os.getenv("KAFKA_BOOTSTRAP_SERVERS")}
+kafka_enabled = False
+push_consumer_enabled = True
+push_provider_enabled = True
+# Create Producer instance
+try:
+    producer = Producer(kafka_conf)
+    producer.list_topics(timeout=2)  # Set a timeout to avoid blocking indefinitely
+    kafka_enabled = True
+except KafkaException as e:
+    print(f"Kafka Producer error: {e}")
+    kafka_enabled = False
+    producer = None  # Ensure the producer is not used further
 
+async def push_kafka_message(topic, action, marketplace_id, message):
+    try:
+        if kafka_enabled:
+            if action == "create":
+                action = action
+            else:
+                action = message["negotiation_status"]
+            message_json = {
+                "source": topic,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "did": message["dataset_id"],
+                "marketplace_id": marketplace_id,
+                "update": message
+            }
+            producer.produce(topic, str(message_json).encode('utf-8'), callback=delivery_report)
+            producer.flush()  # Ensure all messages are delivered before exiting
+    except BaseException as b:
+        print(b)
+        pass
+
+def delivery_report(err, msg):
+    """ Callback for message delivery report """
+    if err is not None:
+        print(f"Message delivery failed: {err}")
+    else:
+        print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
 if __name__ == "__main__":
     uvicorn.run("main-publish-secure:app", host="127.0.0.1", port=8000, reload=True)
 
