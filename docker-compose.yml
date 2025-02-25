@@ -12,6 +12,7 @@ services:
     volumes:
       - .:/app 
   publishapi:
+    restart: always
     build:
       context: .
       dockerfile: publish.Dockerfile

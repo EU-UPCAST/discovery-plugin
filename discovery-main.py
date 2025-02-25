@@ -1,3 +1,4 @@
+import json
 import os
 import pickle
 from typing import List
@@ -72,6 +73,18 @@ async def get_search_page():
 
 
 # region Backend standard calls
+def convert_extras(extras):
+    for extra in extras:
+        if isinstance(extra['value'], str):
+            # Replace single quotes with double quotes for valid JSON
+            extra['value'] = extra['value'].replace("'", '"')
+            # Parse the string to JSON to validate
+            try:
+                extra['value'] = json.loads(extra['value'])
+            except json.JSONDecodeError:
+                print(f"Error decoding JSON for key: {extra['key']}")
+    return extras
+
 
 @app.get("/discover/dataset_search")
 async def dataset_search(
@@ -118,7 +131,16 @@ async def dataset_search(
 
     response = backend.backend.action.package_search(**data_dict)
 
+    # Function to convert single-quoted JSON strings to valid JSON
+
+    # Process the extras field in the results
+    for result in response['results']:
+        result['extras'] = convert_extras(result['extras'])
+
+    # Output the modified data as JSON
+    output_json = json.dumps(data_dict, indent=4)
     return response
+
 
 @app.get("/discover/resource_search")
 async def resource_search(
