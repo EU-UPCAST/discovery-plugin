@@ -170,21 +170,79 @@ def publish_nokia(upcast_object):
 async def create_dataset_with_custom_fields(body: Dict[str, Any]):
     backend = Backend()
     try:
-        marketplace = ''
-        package_response = backend.create_backend_package_custom(body)
+        marketplaces = []
+        natural_language_document = ""
         for ex in body['extras']:
             if ex['key']=='marketplace':
-                marketplace = ex['value']
+                marketplaces.append(ex['value'])
+            if ex['key']=='natural_language_document':
+                natural_language_document = ex['value']
+            if ex['key']=='negotiation_provider_user_id':
+                negotiation_provider_user_id = ex['value']
             if ex['key']=='upcast':
                 upcast_object = ex['value']
                 try:
-                    upcast_object_graph = Graph().parse(data=upcast_object.replace("'",'"'), format="json-ld")
-                except:
+                    if type(upcast_object) is dict:
+                        upcast_object_graph = Graph().parse(data=upcast_object, format="json-ld")
+                    elif type(upcast_object) is str:
+                        upcast_object = json.loads(upcast_object.replace("'",'"'))
+                        upcast_object_graph = Graph().parse(data=upcast_object, format="json-ld")
+                    for d in upcast_object["@graph"]:
+                        if type(d["@type"]) is str:
+                            if d["@type"] == "odrl:Offer" or "offer" in d["@type"].lower():
+                                policy = d
+                            if d["@type"] == "dcat:Dataset" or "Dataset" in d["@type"].lower():
+                                dataset = d
+                    original_context = upcast_object["@context"]
+                    print("")
+                except BaseException as b:
                     raise HTTPException(status_code=400, detail="UPCAST object could not be parsed")
+
+                # Request body
+                payload_negotiation = {
+                    "title": dataset['dct:title'],
+                    "type": "offer",  # This will be overridden to "REQUEST" by the server
+                    "consumer_id": negotiation_provider_user_id,
+                    "producer_id": negotiation_provider_user_id,
+                    "data_processing_workflow_object": {
+                        # Include your data processing workflow details here
+                        "workflow_steps": []
+                    },
+                    "natural_language_document": natural_language_document,
+                    "resource_description_object": dataset,
+                    "odrl_policy": policy
+                }
+
+                # Query parameters (the master password is passed as a query parameter)
+                params = {
+                    "master_password_input": "your_master_password"  # Replace with actual master password
+                }
+
+                # Headers
+                headers = {
+                    "Content-Type": "application/json"
+                }
+
+                # Make the POST request
+                response = requests.post(config.negotiation_url, params=params, headers=headers, data=json.dumps(payload_negotiation))
+
+                # Handle the response
+                if response.status_code == 200:
+                    result = response.json()
+                    print("Offer created successfully!")
+                    print(f"Offer ID: {result['offer_id']}")
+                    print(f"Negotiation ID: {result['negotiation_id']}")
+                else:
+                    print(f"Error: {response.status_code}")
+                    print(response.text)
+
+                package_response = backend.create_backend_package_custom(body)
+
         try:
             if 'created successfully' in package_response:
-                if marketplace == 'nokia' and 'created successfully' in package_response:
-                    publish_nokia(upcast_object)
+                for marketplace in marketplaces:
+                    if marketplace == 'nokia' and 'created successfully' in package_response:
+                        publish_nokia(upcast_object)
 
                 await push_kafka_message("publishing-plugin", "publish", marketplace, body)
         except BaseException as b:
