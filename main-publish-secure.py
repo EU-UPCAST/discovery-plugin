@@ -2,7 +2,7 @@ import json
 import os
 import pickle
 from typing import List, Dict, Any
-
+import logging
 import httpx
 import uvicorn
 from fastapi import FastAPI, Query, UploadFile, Form, HTTPException, Header, Depends
@@ -17,7 +17,8 @@ from rdflib import Graph
 from confluent_kafka import Producer, KafkaException
 from datetime import datetime, timedelta, timezone
 
-
+from upcast_extractor import UpcastCkanMetadataExtractor
+logger = logging.getLogger(__name__)
 app = FastAPI(title = 'UPCAST Publish Plugin API v2', description="UPCAST Discovery Plugin API Endpoints to Publish Datasets to UPCAST Discovery Plugin repository",
               root_path="/publish-api")
 
@@ -171,6 +172,73 @@ def ensure_string_values(data: Dict) -> Dict[str, str]:
     """Convert all values in a dictionary to strings."""
     return {k: str(v) if v is not None else "" for k, v in data.items()}
 
+def create_policy_object_from_dataset(negotiation_provider_user_id, dataset, policy, distribution):
+    natural_language_document = ""
+
+    dataset["raw_object"] = dataset.copy()
+    if "upcast:price" in dataset:
+        dataset["price"] = dataset["upcast:price"]
+    if "@id" in dataset:
+        dataset["uri"] = dataset["@id"]
+    if "dct:title" in dataset:
+        dataset["title"] = dataset["dct:title"]
+    if "upcast:priceUnit" in dataset:
+        dataset["price_unit"] = dataset["upcast:priceUnit"]
+    if "odrl:hasPolicy" in dataset and "odrl_policy" in dataset and "uid" in dataset["odrl_policy"]:
+        dataset["policy_url"] = dataset["odrl_policy"]["uid"]
+    if "dct:description" in dataset:
+        dataset["description"] = dataset["dct:description"]
+    if "@type" in dataset:
+        dataset["type_of_data"] = dataset["@type"]
+    if "dct:publisher" in dataset and "@id" in dataset["dct:publisher"]:
+        dataset["publisher"] = dataset["dct:publisher"]["@id"]
+    if distribution is not {}:
+        dataset["distribution"] = ensure_string_values(distribution)
+
+    # Request body
+    payload_negotiation = {
+        "title": dataset['dct:title'],
+        "type": "offer",  # This will be overridden to "REQUEST" by the server
+        "consumer_id": negotiation_provider_user_id,
+        "producer_id": negotiation_provider_user_id,
+        "data_processing_workflow_object": {
+            # Include your data processing workflow details here
+            "workflow_steps": []
+        },
+        "natural_language_document": natural_language_document,
+        "resource_description_object": dataset,
+        "odrl_policy": policy
+    }
+
+    # Query parameters (the master password is passed as a query parameter)
+    params = {
+        "master_password_input": config.MASTER_PASSWORD  # Replace with actual master password
+    }
+
+    # Headers
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    # Make the POST request
+    response = requests.post(config.negotiation_url, params=params, headers=headers,
+                             data=json.dumps(payload_negotiation))
+
+    # Handle the response
+    if response.status_code == 200:
+        result = response.json()
+        offer_id = result['offer_id']
+
+        print("Offer created successfully!")
+        print(f"Offer ID: {result['offer_id']}")
+        print(f"Negotiation ID: {result['negotiation_id']}")
+        return offer_id
+    else:
+        print(f"Error: {response.status_code}")
+        print(response.text)
+        return None
+
+
 def create_negotiation_offer(negotiation_provider_user_id, dataset, policy, distribution):
     natural_language_document = ""
 
@@ -296,6 +364,73 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
             pass
         return str(package_response) + message
     except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/catalog/create_upcast_dataset/", dependencies=[Depends(verify_api_token)])
+async def create_upcast_dataset(body: Dict[str, Any]):
+    backend = Backend()
+    try:
+        marketplaces = []
+        negotiation_provider_user_id = None
+        policy = {}
+        dataset = {}
+        distribution = {}
+        message = ""
+        upcast_object = None
+
+        # First pass to extract basic fields and the UPCAST object
+        for ex in body['extras']:
+            if ex['key'] == 'marketplace':
+                marketplaces.append(ex['value'])
+            if ex['key'] == 'natural_language_document':
+                natural_language_document = ex['value']
+            if ex['key'] == 'negotiation_provider_user_id':
+                negotiation_provider_user_id = ex['value']
+            if ex['key'] == 'upcast':
+                upcast_object = ex['value']
+
+        # Process UPCAST data if present
+        if upcast_object:
+            try:
+                # Parse the UPCAST object
+                if type(upcast_object) is dict:
+                    upcast_data = upcast_object
+                elif type(upcast_object) is str:
+                    upcast_data = json.loads(upcast_object.replace("'", '"'))
+
+                # Use the simplified extractor to get CKAN extras
+                extractor = UpcastCkanMetadataExtractor()
+                upcast_extras = extractor.extract_ckan_extras(upcast_data)
+
+                # Add the extracted extras to the body
+                body['extras'].extend(upcast_extras)
+
+
+            except Exception as e:
+                logger.error(f"Error processing UPCAST data: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"UPCAST object could not be processed: {str(e)}")
+
+        # Create the package in CKAN
+        package_response = backend.create_backend_package_custom(body)
+
+        # Handle marketplace publishing
+        try:
+            if 'created successfully' in package_response:
+                for marketplace in marketplaces:
+                    if marketplace == 'nokia' and upcast_object:
+                        publish_nokia(upcast_object)
+                    kafka_res = push_kafka_message("publishing-plugin", "publish", marketplace, body)
+                    if kafka_res != True:
+                        message = str(kafka_res)
+        except Exception as b:
+            message = " publish failed."
+            logger.error(f"Publishing failed: {str(b)}")
+            pass
+
+        return str(package_response) + message
+    except Exception as e:
+        logger.error(f"Error in create_dataset_with_custom_fields: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/catalog/update_dataset/", dependencies=[Depends(verify_api_token)])
