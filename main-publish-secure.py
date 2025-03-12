@@ -18,9 +18,15 @@ from confluent_kafka import Producer, KafkaException
 from datetime import datetime, timedelta, timezone
 
 from upcast_extractor import UpcastCkanMetadataExtractor
+
+from marketplace_credentials import router as credentials_router
+
+# Then add this line with your other app.include_router() calls
+
 logger = logging.getLogger(__name__)
 app = FastAPI(title = 'UPCAST Publish Plugin API v2', description="UPCAST Discovery Plugin API Endpoints to Publish Datasets to UPCAST Discovery Plugin repository",
               root_path="/publish-api")
+app.include_router(credentials_router)
 
 # Allow all origins to access your API (you can configure this as needed)
 app.add_middleware(
@@ -306,8 +312,8 @@ def create_negotiation_offer(negotiation_provider_user_id, dataset, policy, dist
         return None
 
 
-@app.post("/catalog/create_dataset_with_custom_fields/", dependencies=[Depends(verify_api_token)])
-async def create_dataset_with_custom_fields(body: Dict[str, Any]):
+@app.post("/catalog/create_dataset_with_custom_fields_v0/", dependencies=[Depends(verify_api_token)])
+async def create_dataset_with_custom_fields_v0(body: Dict[str, Any]):
     backend = Backend()
     try:
         marketplaces = []
@@ -367,7 +373,7 @@ async def create_dataset_with_custom_fields(body: Dict[str, Any]):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/catalog/create_upcast_dataset/", dependencies=[Depends(verify_api_token)])
+@app.post("/catalog/create_dataset_with_custom_fields/", dependencies=[Depends(verify_api_token)])
 async def create_upcast_dataset(body: Dict[str, Any]):
     backend = Backend()
     try:
