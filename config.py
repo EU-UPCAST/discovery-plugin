@@ -1,4 +1,3 @@
-
 #backend_api_key = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJydTlKUW9ZVXZpWjRTanV3NXZTYmcwZXNXbEZPbi16Mk11OTNSQnNEZG1jIiwiaWF0IjoxNzM1ODI1MTQ2fQ.E1bBR4B2HnR66rn1bNGE54gIcjGKlxz5b2mZ6yoc0j8x'
 #backend_api_url = 'https://dips.soton.ac.uk/ckan/'
 service_api_key = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJydTlKUW9ZVXZpWjRTanV3NXZTYmcwZXNXbEZPbi16Mk11OTNSQnNEZG1jIiwiaWF0IjoxNzM1ODI1MTQ2fQ.E1bBR4B2HnR66rn1bNGE54gIcjGKlxz5b2mZ6yoc0j8x'
@@ -8,7 +7,7 @@ backend_api_key = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJfa2NtVU1tb0Vm
 backend_api_url = 'http://dips.soton.ac.uk:5000/'
 
 gpt_key = ''
-integration_nokia= {"url": "https://upcast.dataexchange.nokia.com//auth/tokens",
+integration_nokia= {"url": "https://upcast.dataexchange.nokia.com",
                     "auth": {"email": "upcast1@noax.com",
                 "password": "Upcast#pass1"}
                      }

@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 from upcast_extractor import UpcastCkanMetadataExtractor
 
-from marketplace_credentials import router as credentials_router
+from marketplace_credentials import router as credentials_router, read_credentials, MarketPlace
 
 # Then add this line with your other app.include_router() calls
 
@@ -68,13 +68,12 @@ async def create_dataset(
     backend = Backend()
     return backend.create_backend_package(package_name, package_title, organization_name, package_notes)
 
-def publish_nokia(upcast_object):
-    upcast_object_graph = Graph().parse(data=upcast_object.replace("'",'"'), format="json-ld")
+def publish_nokia(upcast_object, extracted_fields, credentials):
     upcast_object_json = upcast_object
     try:
         # Step 1: Get the authentication token
-        auth_url = config.integration_nokia['url']
-        auth_payload = config.integration_nokia['auth']
+        auth_url = credentials['url'] + "/auth/tokens"
+        auth_payload = {"email":credentials['username'], "password":credentials['password']}
         auth_headers = {"Content-Type": "application/json"}
 
         auth_response = requests.post(
@@ -92,7 +91,7 @@ def publish_nokia(upcast_object):
             exit()
 
         # Step 2: Use the token to send data to the streams endpoint
-        streams_url = "https://upcast.dataexchange.nokia.com//streams/streams"
+        streams_url = credentials['url'] + "/streams/streams"
         streams_payload = {
             "url": "http://example.org/",
             "visibility": "public",
@@ -114,47 +113,15 @@ def publish_nokia(upcast_object):
                 ]
             }
         }
-        query = """
-        PREFIX dcat: <http://www.w3.org/ns/dcat#>
 
-        SELECT ?id ?p ?o ?type
-        WHERE {
-          ?s a ?type ;
-             ?p ?o .
-          BIND(STR(?s) AS ?id)
-        }
-        """
+        url = extracted_fields["upcast_dataset_uri"]
+        desc = extracted_fields["upcast_description"]
+        price = extracted_fields["upcast_price"]
+        title = extracted_fields["upcast_title"]
 
-        # Execute the query and assign the result
-        results = upcast_object_graph.query(query)
-#         = [(str(row.id),str(row.desc),str(row.type)) for row in results]
-        url = ""
-        desc = ""
-        price = 0
-        title = ""
-        for row in results:
-            pass
-        for row in results:
-            if "distribution" in str(row.type).lower():
-                url = row.id
-                if "description" in str(row.p).lower():
-                    desc = row.o
-                if "price" in str(row.p).lower():
-                    price = row.o
-                if "title" in str(row.p).lower():
-                    title = row.o
-            elif "dataset" in  str(row.type).lower():
-                if url == "":
-                    url = row.id
-                if "description" in str(row.p).lower() and desc == "":
-                    desc = row.o
-                if "price" in str(row.p).lower() and price == 0:
-                    price = row.o
-                if "title" in str(row.p).lower() and title == 0:
-                    title = row.o
 
         streams_payload["url"] = str(url)
-        streams_payload["price"] = price.value
+        streams_payload["price"] = float(price)
         streams_payload["name"] = str(title)
         streams_payload["description"] = str(desc)
 
@@ -323,8 +290,10 @@ async def create_dataset_with_custom_fields_v0(body: Dict[str, Any]):
         distribution = {}
 
         for ex in body['extras']:
-            if ex['key']=='marketplace':
-                marketplaces.append(ex['value'])
+            # if ex['key']=='marketplace':
+            #     marketplaces.append(ex['value'])
+            if ex['key']=='marketplace_account_ids':
+                marketplaces = ex['value'].split(",")
             if ex['key']=='natural_language_document':
                 natural_language_document = ex['value']
             if ex['key']=='negotiation_provider_user_id':
@@ -358,13 +327,16 @@ async def create_dataset_with_custom_fields_v0(body: Dict[str, Any]):
         package_response = backend.create_backend_package_custom(body)
 
         try:
+            cr = read_credentials()
             if 'created successfully' in package_response:
                 for marketplace in marketplaces:
-                    if marketplace == 'nokia' and 'created successfully' in package_response:
-                        publish_nokia(upcast_object)
-                    kafka_res = push_kafka_message("publishing-plugin", "publish", marketplace, body)
-                    if kafka_res != True:
-                        message = str(kafka_res)
+                    if marketplace in cr:
+                        if cr[marketplace]["marketplace"] == MarketPlace.Nokia:
+                            publish_nokia(upcast_object,cr[marketplace])
+
+                kafka_res = push_kafka_message("publishing-plugin", "publish", marketplace, body)
+                if kafka_res != True:
+                    message = str(kafka_res)
         except BaseException as b:
             message = " publish failed."
             pass
@@ -384,11 +356,12 @@ async def create_upcast_dataset(body: Dict[str, Any]):
         distribution = {}
         message = ""
         upcast_object = None
+        upcast_extras = {}
 
         # First pass to extract basic fields and the UPCAST object
         for ex in body['extras']:
-            if ex['key'] == 'marketplace':
-                marketplaces.append(ex['value'])
+            if ex['key']=='marketplace_account_ids':
+                marketplaces = ex['value'].split(",")
             if ex['key'] == 'natural_language_document':
                 natural_language_document = ex['value']
             if ex['key'] == 'negotiation_provider_user_id':
@@ -423,12 +396,16 @@ async def create_upcast_dataset(body: Dict[str, Any]):
         # Handle marketplace publishing
         try:
             if 'created successfully' in package_response:
+                cr = read_credentials()
+
                 for marketplace in marketplaces:
-                    if marketplace == 'nokia' and upcast_object:
-                        publish_nokia(upcast_object)
-                    kafka_res = push_kafka_message("publishing-plugin", "publish", marketplace, body)
-                    if kafka_res != True:
-                        message = str(kafka_res)
+                    if marketplace in cr:
+                        if cr[marketplace]["marketplace"] == MarketPlace.Nokia.value:
+                            publish_nokia(upcast_object, upcast_extras, cr[marketplace])
+
+                kafka_res = push_kafka_message("publishing-plugin", "publish", marketplace, body)
+                if kafka_res != True:
+                    message = str(kafka_res)
         except Exception as b:
             message = " publish failed."
             logger.error(f"Publishing failed: {str(b)}")
