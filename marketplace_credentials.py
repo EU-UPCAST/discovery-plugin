@@ -28,8 +28,8 @@ class MarketPlace(str, Enum):
 
 # Pydantic model for credentials
 class MarketplaceCredentials(BaseModel):
-    account_id: str
-    marketplace: MarketPlace
+    id: str
+    type: MarketPlace
     url: str
     username: str
     password: str
@@ -62,7 +62,7 @@ async def add_or_update_credentials(credentials: MarketplaceCredentials):
 
     ## Store by marketplace URL as the key
     #account_id = credentials.url.replace("https://", "").replace("http://", "").split("/")[0]
-    account_id = credentials.account_id
+    account_id = credentials.id
     creds_data[account_id] = credentials.dict()
 
     write_credentials(creds_data)

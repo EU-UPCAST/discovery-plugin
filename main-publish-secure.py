@@ -141,6 +141,27 @@ def publish_nokia(upcast_object, extracted_fields, credentials):
     except BaseException as b:
         print(b)
 
+def publish_okfn(upcast_object, extracted_fields, credentials):
+    upcast_object_json = upcast_object
+    try:
+        # Step 1: Get the authentication token
+        auth_url = credentials['url'] + "/upcast/resource"
+        auth_headers = {"Content-Type": "application/json", "api-key" : credentials['password']}
+
+        response = requests.post(
+            auth_url,
+            json=upcast_object_json,
+            headers=auth_headers,
+            verify=False
+        )
+        if str(response.status_code)[0] == "2":
+            print("Stream data posted successfully:", response.json())
+        else:
+            print("Failed to post stream data:", response.text)
+
+    except BaseException as b:
+        print(b)
+
 def ensure_string_values(data: Dict) -> Dict[str, str]:
     """Convert all values in a dictionary to strings."""
     return {k: str(v) if v is not None else "" for k, v in data.items()}
@@ -292,7 +313,7 @@ async def create_dataset_with_custom_fields_v0(body: Dict[str, Any]):
         for ex in body['extras']:
             # if ex['key']=='marketplace':
             #     marketplaces.append(ex['value'])
-            if ex['key']=='marketplace_account_ids':
+            if ex['key']=='marketplace_ids':
                 marketplaces = ex['value'].split(",")
             if ex['key']=='natural_language_document':
                 natural_language_document = ex['value']
@@ -400,10 +421,13 @@ async def create_upcast_dataset(body: Dict[str, Any]):
 
                 for marketplace in marketplaces:
                     if marketplace in cr:
-                        if cr[marketplace]["marketplace"] == MarketPlace.Nokia.value:
+                        if cr[marketplace]["type"] == MarketPlace.Nokia.value:
                             publish_nokia(upcast_object, upcast_extras, cr[marketplace])
 
-                kafka_res = push_kafka_message("publishing-plugin", "publish", marketplace, body)
+                        if cr[marketplace]["type"] == MarketPlace.OKFN.value:
+                            publish_okfn(upcast_object, upcast_extras, cr[marketplace])
+
+                kafka_res = push_kafka_message("publishing-plugin", "publish", marketplaces, body)
                 if kafka_res != True:
                     message = str(kafka_res)
         except Exception as b:
