@@ -56,6 +56,8 @@ class UpcastCkanMetadataExtractor:
         if dataset_info:
             for key, value in dataset_info.items():
                 if value is not None:
+                    if isinstance(value, str):
+                        value = value.lower()
                     if key == "id":
                         safe_key = "upcast_dataset_uri"
                     elif key in ckan_reserved_fields:
@@ -69,6 +71,8 @@ class UpcastCkanMetadataExtractor:
         if distribution_info:
             for key, value in distribution_info.items():
                 if value is not None:
+                    if isinstance(value, str):
+                        value = value.lower()
                     if key == "id":
                         safe_key = "upcast_distribution_uri"
                     else:
@@ -79,7 +83,8 @@ class UpcastCkanMetadataExtractor:
         if dataset_info and dataset_info.get("id"):
             themes = self._extract_themes(dataset_info["id"])
             if themes:
-                extras.append({"key": "upcast_themes", "value": ",".join(themes)})
+                lowercased_themes = [theme.lower() for theme in themes if isinstance(theme, str)]
+                extras.append({"key": "upcast_themes", "value": ", ".join(lowercased_themes)})
 
         # Extract policy information
         if dataset_info and dataset_info.get("id"):
@@ -90,13 +95,19 @@ class UpcastCkanMetadataExtractor:
                 # Add simplified policy details
                 policy_details = self._get_simplified_policy(policy_uri)
                 if policy_details.get("allowed"):
-                    extras.append({"key": "upcast_policy_allowed", "value": ",".join(policy_details["allowed"])})
+                    allowed = [item.lower() for item in policy_details["allowed"] if isinstance(item, str)]
+                    extras.append({"key": "upcast_policy_allowed", "value": ", ".join(allowed)})
                 if policy_details.get("forbidden"):
-                    extras.append({"key": "upcast_policy_forbidden", "value": ",".join(policy_details["forbidden"])})
+                    forbidden = [item.lower() for item in policy_details["forbidden"] if isinstance(item, str)]
+                    extras.append({"key": "upcast_policy_forbidden", "value": ", ".join(forbidden)})
                 if policy_details.get("required"):
-                    extras.append({"key": "upcast_policy_required", "value": ",".join(policy_details["required"])})
+                    required = [item.lower() for item in policy_details["required"] if isinstance(item, str)]
+                    extras.append({"key": "upcast_policy_required", "value": ", ".join(required)})
                 if policy_details.get("summary"):
-                    extras.append({"key": "upcast_policy_summary", "value": policy_details["summary"]})
+                    summary = policy_details["summary"]
+                    if isinstance(summary, str):
+                        summary = summary.lower()
+                    extras.append({"key": "upcast_policy_summary", "value": summary})
 
         return extras
 
