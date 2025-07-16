@@ -1,35 +1,40 @@
 version: '3'
 services:
   discoveryapi:
+    restart: always
     build:
       context: .
       dockerfile: discovery.Dockerfile
     ports:
-      - "8000:80"  # Expose Discovery Plugin API on port 8000
+      - "8003:80"  # Expose Discovery Plugin API on port 8000
     depends_on:
       - ckan  # Ensure ckan is ready before starting API
     volumes:
       - .:/app 
   publishapi:
+    restart: always
     build:
       context: .
       dockerfile: publish.Dockerfile
     ports:
-      - "8001:80"  # Expose Publish Plugin API on port 8000
+      - "8004:80"  # Expose Publish Plugin API on port 8000
     depends_on:
       - ckan  # Ensure ckan is ready before starting API
     volumes:
       - .:/app 
 
   datapusher:
+    restart: always
     container_name: datapusher
     build:
-      context: ./docker-ckan/datapusher/
+      context: ./custom-docker/
+      dockerfile: datapusher.Dockerfile
     ports:
       - "8800:8800"
 
   db:
     container_name: db
+    restart: always
     build:
       context: ./docker-ckan/postgresql/
       args:
@@ -44,6 +49,7 @@ services:
 
   solr:
     container_name: solr
+    restart: always
     image: ckan/ckan-solr:2.9-solr8
     volumes:
       - solr_data:/var/solr
@@ -51,10 +57,11 @@ services:
   redis:
     container_name: redis
     image: redis:alpine
-
+    restart: always
 
   ckan:
     container_name: ckan
+    restart: always
     build:
       context: ./docker-ckan/ckan/
       dockerfile: Dockerfile

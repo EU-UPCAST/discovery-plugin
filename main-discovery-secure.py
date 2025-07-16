@@ -1,10 +1,9 @@
-import json
 import os
 import pickle
 from typing import List
-
+import uvicorn
 import httpx
-from fastapi import FastAPI, Query, UploadFile, Form, HTTPException
+from fastapi import FastAPI, Query, UploadFile, Form, HTTPException, Header, Depends
 from pydantic import BaseModel, Field
 
 import config
@@ -12,7 +11,8 @@ from backend import Backend, Backend_Faiss, DatasetSimilarities
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-app = FastAPI(title = 'UPCAST Discovery Plugin API')
+app = FastAPI(title = 'UPCAST Discovery Plugin API v2', description="UPCAST Discovery Plugin API Endpoints to Discover Datasets from a preexisting repository",
+              root_path="/discovery-api")
 
 # Allow all origins to access your API (you can configure this as needed)
 app.add_middleware(
@@ -22,6 +22,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Dependency for API token verification
+def verify_api_token(apitoken: str = Header(None)):
+    if apitoken != config.service_api_key:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid API token")
 
 class DatasetItem(BaseModel):
     package_name: str = Form(...),
@@ -73,20 +78,8 @@ async def get_search_page():
 
 
 # region Backend standard calls
-def convert_extras(extras):
-    for extra in extras:
-        if isinstance(extra['value'], str):
-            # Replace single quotes with double quotes for valid JSON
-            extra['value'] = extra['value'].replace("'", '"')
-            # Parse the string to JSON to validate
-            try:
-                extra['value'] = json.loads(extra['value'])
-            except json.JSONDecodeError:
-                print(f"Error decoding JSON for key: {extra['key']}")
-    return extras
 
-
-@app.get("/discover/dataset_search")
+@app.get("/discover/dataset_search", dependencies=[Depends(verify_api_token)])
 async def dataset_search(
         q: str = Query("*:*", description="The solr query"),
         fq: str = Query(None, description="Any filter queries to apply"),
@@ -131,18 +124,9 @@ async def dataset_search(
 
     response = backend.backend.action.package_search(**data_dict)
 
-    # Function to convert single-quoted JSON strings to valid JSON
-
-    # Process the extras field in the results
-    for result in response['results']:
-        result['extras'] = convert_extras(result['extras'])
-
-    # Output the modified data as JSON
-    output_json = json.dumps(data_dict, indent=4)
     return response
 
-
-@app.get("/discover/resource_search")
+@app.get("/discover/resource_search", dependencies=[Depends(verify_api_token)])
 async def resource_search(
         query: str = Query(..., description="The search criteria (e.g., field:term)"),
         order_by: str = Query(None, description="A field to order the results"),
@@ -161,7 +145,7 @@ async def resource_search(
     response = backend.backend.action.resource_search(**data_dict)
     return response
 
-@app.get("/discover/dataset_show_resources")
+@app.get("/discover/dataset_show_resources", dependencies=[Depends(verify_api_token)])
 async def dataset_show(
         dataset_name: str
 ):
@@ -172,7 +156,13 @@ async def dataset_show(
 
 # endregion
 
-@app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem])
+@app.get("/discover/create_embeddings", dependencies=[Depends(verify_api_token)])
+async def create_embeddings():
+    backend = Backend_Faiss()
+    backend.update_embedding_metadata()
+    return {"result":"embedding updated"}
+
+@app.post("/discover/discover_similar_datasets", response_model=List[SimilarItem], dependencies=[Depends(verify_api_token)])
 async def discover_similar_datasets(dataset_id: str = Query(None, description="Unique dataset ID")):
     backend = Backend_Faiss()
 
@@ -190,8 +180,7 @@ async def discover_similar_datasets(dataset_id: str = Query(None, description="U
         return {"result":"no similar resources found"}
 
 
-
-@app.post("/discover/discover_data_processing_workflow", response_model=List[DatasetSimilarities])
+@app.post("/discover/discover_data_processing_workflow", response_model=List[DatasetSimilarities], dependencies=[Depends(verify_api_token)])
 async def discover_dpw(dataset_ids: List[str]):
     # Use the find_similar_datasets function with the provided list of dataset_ids
     try:
@@ -205,13 +194,8 @@ async def discover_dpw(dataset_ids: List[str]):
 
     except Exception as e:
         return {"error": "An error occurred while processing", "details": str(e)}
-@app.get("/discover/create_embeddings")
-async def create_embeddings():
-    backend = Backend_Faiss()
-    backend.update_embedding_metadata()
-    return {"result":"embedding updated"}
 
-@app.post("/discover/discover_similar_datasets_description", response_model=List[SimilarItem])
+@app.post("/discover/discover_similar_datasets_description", response_model=List[SimilarItem], dependencies=[Depends(verify_api_token)])
 async def discover_similar_datasets_description(description: str = Query("sample description", description="Dataset description")):
     backend = Backend_Faiss()
 
@@ -225,5 +209,4 @@ async def discover_similar_datasets_description(description: str = Query("sample
         return {"result":"no similar resources found"}
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("discovery-main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main-discovery-secure:app", host="127.0.0.1", port=8001, reload=True)
