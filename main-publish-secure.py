@@ -70,6 +70,7 @@ async def create_dataset(
 
 def publish_nokia(upcast_object, extracted_fields, credentials):
     upcast_object_json = upcast_object
+    extracted_fields_dict = {item['key']: item['value'] for item in extracted_fields}
     try:
         # Step 1: Get the authentication token
         auth_url = credentials['url'] + "/auth/tokens"
@@ -105,8 +106,7 @@ def publish_nokia(upcast_object, extracted_fields, credentials):
                 "coordinates": [20, 44]
             },
             "terms": "https://gdpr-info.eu/",
-            "external": False,
-            "subcategory": "66605a587b0d2a883f28cdfc",
+            "subcategory": "6865417c3482a54f6821e0c4",
             "metadata": {
                 "tags": [
                     upcast_object_json
@@ -114,14 +114,14 @@ def publish_nokia(upcast_object, extracted_fields, credentials):
             }
         }
 
-        url = extracted_fields["upcast_dataset_uri"]
-        desc = extracted_fields["upcast_description"]
-        price = extracted_fields["upcast_price"]
-        title = extracted_fields["upcast_title"]
+        url = extracted_fields_dict["upcast_dataset_uri"]
+        desc = extracted_fields_dict["upcast_description"]
+        price = extracted_fields_dict["upcast_price"]
+        title = extracted_fields_dict["upcast_title"]
 
 
         streams_payload["url"] = str(url)
-        streams_payload["price"] = float(price)
+        streams_payload["price"] = int(float(price))
         streams_payload["name"] = str(title)
         streams_payload["description"] = str(desc)
 
@@ -134,7 +134,7 @@ def publish_nokia(upcast_object, extracted_fields, credentials):
         streams_response = requests.post(streams_url, json=streams_payload, headers=streams_headers,
             verify=False)
 
-        if str(auth_response.status_code)[0] == "2":
+        if str(streams_response.status_code)[0] == "2":
             print("Stream data posted successfully:", streams_response.json())
         else:
             print("Failed to post stream data:", streams_response.text)
